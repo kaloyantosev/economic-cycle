@@ -1,0 +1,129 @@
+/* Modern Fintech Dark Mode & Custom Styling for Credit Cycle Monitor */
+:root {
+  --bg-primary: #090d16;
+  --bg-secondary: #0f172a;
+  --bg-card: #141e33;
+  --bg-card-hover: #1a2744;
+  --border-color: #1e293b;
+  --border-glow: rgba(59, 130, 246, 0.3);
+  
+  --phase-early: #0284c7;     /* Sky Blue */
+  --phase-mid: #0d9488;       /* Teal */
+  --phase-late: #16a34a;      /* Green */
+  --phase-recession: #9333ea; /* Purple */
+
+  --text-primary: #f8fafc;
+  --text-secondary: #94a3b8;
+  --text-muted: #64748b;
+}
+
+body {
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  min-height: 100vh;
+}
+
+/* Custom scrollbars */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: var(--bg-primary);
+}
+::-webkit-scrollbar-thumb {
+  background: #334155;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #475569;
+}
+
+/* Card Glow Effects */
+.glass-card {
+  background: rgba(19, 29, 49, 0.75);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 1rem;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.5);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.glass-card:hover {
+  border-color: rgba(59, 130, 246, 0.25);
+  box-shadow: 0 15px 30px -5px rgba(0, 0, 0, 0.7), 0 0 15px rgba(59, 130, 246, 0.1);
+}
+
+/* Canvas container */
+.curve-canvas-wrap {
+  position: relative;
+  width: 100%;
+  height: 380px;
+}
+
+/* Active Invesco Table Cell */
+.table-cell-active {
+  background: linear-gradient(135deg, rgba(34, 197, 94, 0.25), rgba(16, 185, 129, 0.15)) !important;
+  border: 1.5px solid #22c55e !important;
+  box-shadow: 0 0 16px rgba(34, 197, 94, 0.35) inset, 0 0 8px rgba(34, 197, 94, 0.2) !important;
+  color: #ffffff !important;
+  font-weight: 700 !important;
+  position: relative;
+}
+
+.table-cell-active::after {
+  content: "ACTIVE NOW";
+  position: absolute;
+  top: 4px;
+  right: 6px;
+  font-size: 8px;
+  letter-spacing: 0.05em;
+  background: #22c55e;
+  color: #052e16;
+  font-weight: 800;
+  padding: 1px 4px;
+  border-radius: 3px;
+}
+
+/* Interactive slider track styling */
+input[type="range"] {
+  -webkit-appearance: none;
+  background: #1e293b;
+  border-radius: 9999px;
+  height: 6px;
+  outline: none;
+}
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #38bdf8;
+  cursor: pointer;
+  box-shadow: 0 0 8px rgba(56, 189, 248, 0.7);
+  transition: transform 0.1s ease;
+}
+input[type="range"]::-webkit-slider-thumb:hover {
+  transform: scale(1.2);
+}
+
+/* Pulse animation for current marker */
+@keyframes pulse-ring {
+  0% {
+    transform: scale(0.9);
+    opacity: 0.9;
+  }
+  50% {
+    transform: scale(1.3);
+    opacity: 0.4;
+  }
+  100% {
+    transform: scale(0.9);
+    opacity: 0.9;
+  }
+}
+
+.pulse-circle {
+  animation: pulse-ring 2.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
