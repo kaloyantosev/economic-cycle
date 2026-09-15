@@ -1,6 +1,6 @@
 {
   "metadata": {
-    "generated_at": "2026-09-15T18:11:52.198620",
+    "generated_at": "2026-09-15T18:40:00.360867",
     "model_version": "4.0 \u2014 Phase-Plane + Circular EWMA",
     "source": "Federal Reserve FRED \u2022 Invesco Framework",
     "quarters_count": 187,
@@ -138,6 +138,7 @@
       "composite_phase": "Recession",
       "phase_color": "#9333ea",
       "cycle_x_pct": 95.1,
+      "sp500": 110.9,
       "indicator_components": {
         "defaults": {
           "level": -0.0,
@@ -240,6 +241,7 @@
       "composite_phase": "Recession",
       "phase_color": "#9333ea",
       "cycle_x_pct": 90.1,
+      "sp500": 103.0,
       "indicator_components": {
         "defaults": {
           "level": -0.0,
@@ -342,6 +344,7 @@
       "composite_phase": "Recession",
       "phase_color": "#9333ea",
       "cycle_x_pct": 85.6,
+      "sp500": 119.8,
       "indicator_components": {
         "defaults": {
           "level": -0.0,
@@ -444,6 +447,7 @@
       "composite_phase": "Recession",
       "phase_color": "#9333ea",
       "cycle_x_pct": 77.4,
+      "sp500": 130.2,
       "indicator_components": {
         "defaults": {
           "level": -0.0,
@@ -546,6 +550,7 @@
       "composite_phase": "Late cycle",
       "phase_color": "#16a34a",
       "cycle_x_pct": 59.1,
+      "sp500": 133.0,
       "indicator_components": {
         "defaults": {
           "level": -0.0,
@@ -648,6 +653,7 @@
       "composite_phase": "Late cycle",
       "phase_color": "#16a34a",
       "cycle_x_pct": 52.2,
+      "sp500": 134.4,
       "indicator_components": {
         "defaults": {
           "level": -0.0,
@@ -750,6 +756,7 @@
       "composite_phase": "Late cycle",
       "phase_color": "#16a34a",
       "cycle_x_pct": 51.4,
+      "sp500": 129.1,
       "indicator_components": {
         "defaults": {
           "level": -0.0,
@@ -852,6 +859,7 @@
       "composite_phase": "Late cycle",
       "phase_color": "#16a34a",
       "cycle_x_pct": 55.2,
+      "sp500": 119.8,
       "indicator_components": {
         "defaults": {
           "level": -0.0,
@@ -954,6 +962,7 @@
       "composite_phase": "Late cycle",
       "phase_color": "#16a34a",
       "cycle_x_pct": 64.5,
+      "sp500": 117.3,
       "indicator_components": {
         "defaults": {
           "level": -0.0,
@@ -1056,6 +1065,7 @@
       "composite_phase": "Recession",
       "phase_color": "#9333ea",
       "cycle_x_pct": 76.2,
+      "sp500": 116.3,
       "indicator_components": {
         "defaults": {
           "level": -0.0,
@@ -1158,6 +1168,7 @@
       "composite_phase": "Recession",
       "phase_color": "#9333ea",
       "cycle_x_pct": 84.7,
+      "sp500": 109.4,
       "indicator_components": {
         "defaults": {
           "level": -0.0,
@@ -1260,6 +1271,7 @@
       "composite_phase": "Recession",
       "phase_color": "#9333ea",
       "cycle_x_pct": 89.3,
+      "sp500": 132.7,
       "indicator_components": {
         "defaults": {
           "level": -0.0,
@@ -1362,6 +1374,7 @@
       "composite_phase": "Recession",
       "phase_color": "#9333ea",
       "cycle_x_pct": 92.8,
+      "sp500": 144.3,
       "indicator_components": {
         "defaults": {
           "level": -0.0,
@@ -1464,6 +1477,7 @@
       "composite_phase": "Recession",
       "phase_color": "#9333ea",
       "cycle_x_pct": 97.7,
+      "sp500": 157.7,
       "indicator_components": {
         "defaults": {
           "level": -0.0,
@@ -1566,6 +1580,7 @@
       "composite_phase": "Early cycle",
       "phase_color": "#0284c7",
       "cycle_x_pct": 5.7,
+      "sp500": 167.0,
       "indicator_components": {
         "defaults": {
           "level": -0.0,
@@ -1668,6 +1683,7 @@
       "composite_phase": "Early cycle",
       "phase_color": "#0284c7",
       "cycle_x_pct": 21.0,
+      "sp500": 167.7,
       "indicator_components": {
         "defaults": {
           "level": -0.0,
@@ -1770,6 +1786,7 @@
       "composite_phase": "Mid-cycle",
       "phase_color": "#0d9488",
       "cycle_x_pct": 34.6,
+      "sp500": 166.4,
       "indicator_components": {
         "defaults": {
           "level": -0.0,
@@ -1872,6 +1889,7 @@
       "composite_phase": "Mid-cycle",
       "phase_color": "#0d9488",
       "cycle_x_pct": 41.6,
+      "sp500": 157.6,
       "indicator_components": {
         "defaults": {
           "level": -0.0,
@@ -1974,6 +1992,7 @@
       "composite_phase": "Mid-cycle",
       "phase_color": "#0d9488",
       "cycle_x_pct": 48.1,
+      "sp500": 151.1,
       "indicator_components": {
         "defaults": {
           "level": -0.0,
@@ -2076,6 +2095,7 @@
       "composite_phase": "Late cycle",
       "phase_color": "#16a34a",
       "cycle_x_pct": 57.8,
+      "sp500": 164.8,
       "indicator_components": {
         "defaults": {
           "level": -0.0,
@@ -2178,6 +2198,7 @@
       "composite_phase": "Late cycle",
       "phase_color": "#16a34a",
       "cycle_x_pct": 66.8,
+      "sp500": 171.6,
       "indicator_components": {
         "defaults": {
           "level": -0.0,
@@ -2280,6 +2301,7 @@
       "composite_phase": "Recession",
       "phase_color": "#9333ea",
       "cycle_x_pct": 75.7,
+      "sp500": 180.6,
       "indicator_components": {
         "defaults": {
           "level": -0.0,
@@ -2382,6 +2404,7 @@
       "composite_phase": "Recession",
       "phase_color": "#9333ea",
       "cycle_x_pct": 82.0,
+      "sp500": 192.5,
       "indicator_components": {
         "defaults": {
           "level": -0.0,
@@ -2484,6 +2507,7 @@
       "composite_phase": "Recession",
       "phase_color": "#9333ea",
       "cycle_x_pct": 85.4,
+      "sp500": 186.2,
       "indicator_components": {
         "defaults": {
           "level": -0.0,
@@ -2586,6 +2610,7 @@
       "composite_phase": "Recession",
       "phase_color": "#9333ea",
       "cycle_x_pct": 87.9,
+      "sp500": 208.2,
       "indicator_components": {
         "defaults": {
           "level": -0.0,
@@ -2688,6 +2713,7 @@
       "composite_phase": "Recession",
       "phase_color": "#9333ea",
       "cycle_x_pct": 89.7,
+      "sp500": 238.0,
       "indicator_components": {
         "defaults": {
           "level": -0.0,
@@ -2790,6 +2816,7 @@
       "composite_phase": "Recession",
       "phase_color": "#9333ea",
       "cycle_x_pct": 91.4,
+      "sp500": 240.2,
       "indicator_components": {
         "defaults": {
           "level": -0.0,
@@ -2892,6 +2919,7 @@
       "composite_phase": "Recession",
       "phase_color": "#9333ea",
       "cycle_x_pct": 93.4,
+      "sp500": 237.4,
       "indicator_components": {
         "defaults": {
           "level": -0.0,
@@ -2994,6 +3022,7 @@
       "composite_phase": "Recession",
       "phase_color": "#9333ea",
       "cycle_x_pct": 95.3,
+      "sp500": 264.5,
       "indicator_components": {
         "defaults": {
           "level": -2.632,
@@ -3096,6 +3125,7 @@
       "composite_phase": "Recession",
       "phase_color": "#9333ea",
       "cycle_x_pct": 97.9,
+      "sp500": 289.3,
       "indicator_components": {
         "defaults": {
           "level": -2.632,
@@ -3198,6 +3228,7 @@
       "composite_phase": "Early cycle",
       "phase_color": "#0284c7",
       "cycle_x_pct": 0.4,
+      "sp500": 310.1,
       "indicator_components": {
         "defaults": {
           "level": -2.418,
@@ -3300,6 +3331,7 @@
       "composite_phase": "Early cycle",
       "phase_color": "#0284c7",
       "cycle_x_pct": 3.4,
+      "sp500": 280.2,
       "indicator_components": {
         "defaults": {
           "level": -2.314,
@@ -3402,6 +3434,7 @@
       "composite_phase": "Early cycle",
       "phase_color": "#0284c7",
       "cycle_x_pct": 7.5,
+      "sp500": 250.5,
       "indicator_components": {
         "defaults": {
           "level": -2.082,
@@ -3504,6 +3537,7 @@
       "composite_phase": "Early cycle",
       "phase_color": "#0284c7",
       "cycle_x_pct": 9.4,
+      "sp500": 262.6,
       "indicator_components": {
         "defaults": {
           "level": -1.844,
@@ -3606,6 +3640,7 @@
       "composite_phase": "Early cycle",
       "phase_color": "#0284c7",
       "cycle_x_pct": 9.0,
+      "sp500": 269.1,
       "indicator_components": {
         "defaults": {
           "level": -1.807,
@@ -3708,6 +3743,7 @@
       "composite_phase": "Early cycle",
       "phase_color": "#0284c7",
       "cycle_x_pct": 9.3,
+      "sp500": 277.4,
       "indicator_components": {
         "defaults": {
           "level": -1.563,
@@ -3810,6 +3846,7 @@
       "composite_phase": "Early cycle",
       "phase_color": "#0284c7",
       "cycle_x_pct": 7.2,
+      "sp500": 285.4,
       "indicator_components": {
         "defaults": {
           "level": -1.716,
@@ -3912,6 +3949,7 @@
       "composite_phase": "Early cycle",
       "phase_color": "#0284c7",
       "cycle_x_pct": 2.9,
+      "sp500": 302.3,
       "indicator_components": {
         "defaults": {
           "level": -1.673,
@@ -4014,6 +4052,7 @@
       "composite_phase": "Early cycle",
       "phase_color": "#0284c7",
       "cycle_x_pct": 0.3,
+      "sp500": 331.9,
       "indicator_components": {
         "defaults": {
           "level": -1.685,
@@ -4116,6 +4155,7 @@
       "composite_phase": "Recession",
       "phase_color": "#9333ea",
       "cycle_x_pct": 96.7,
+      "sp500": 347.4,
       "indicator_components": {
         "defaults": {
           "level": -1.655,
@@ -4218,6 +4258,7 @@
       "composite_phase": "Recession",
       "phase_color": "#9333ea",
       "cycle_x_pct": 95.7,
+      "sp500": 339.97,
       "indicator_components": {
         "defaults": {
           "level": -1.667,
@@ -4320,6 +4361,7 @@
       "composite_phase": "Recession",
       "phase_color": "#9333ea",
       "cycle_x_pct": 95.9,
+      "sp500": 338.18,
       "indicator_components": {
         "defaults": {
           "level": -1.777,
@@ -4422,6 +4464,7 @@
       "composite_phase": "Recession",
       "phase_color": "#9333ea",
       "cycle_x_pct": 96.1,
+      "sp500": 360.03,
       "indicator_components": {
         "defaults": {
           "level": -1.844,
@@ -4524,6 +4567,7 @@
       "composite_phase": "Recession",
       "phase_color": "#9333ea",
       "cycle_x_pct": 96.0,
+      "sp500": 307.12,
       "indicator_components": {
         "defaults": {
           "level": -2.339,
@@ -4626,6 +4670,7 @@
       "composite_phase": "Recession",
       "phase_color": "#9333ea",
       "cycle_x_pct": 95.5,
+      "sp500": 325.49,
       "indicator_components": {
         "defaults": {
           "level": -2.351,
@@ -4728,6 +4773,7 @@
       "composite_phase": "Recession",
       "phase_color": "#9333ea",
       "cycle_x_pct": 95.7,
+      "sp500": 379.68,
       "indicator_components": {
         "defaults": {
           "level": -2.424,
@@ -4830,6 +4876,7 @@
       "composite_phase": "Recession",
       "phase_color": "#9333ea",
       "cycle_x_pct": 96.5,
+      "sp500": 380.23,
       "indicator_components": {
         "defaults": {
           "level": -2.308,
@@ -4932,6 +4979,7 @@
       "composite_phase": "Recession",
       "phase_color": "#9333ea",
       "cycle_x_pct": 98.7,
+      "sp500": 386.88,
       "indicator_components": {
         "defaults": {
           "level": -2.192,
@@ -5034,6 +5082,7 @@
       "composite_phase": "Early cycle",
       "phase_color": "#0284c7",
       "cycle_x_pct": 1.4,
+      "sp500": 416.08,
       "indicator_components": {
         "defaults": {
           "level": -2.027,
@@ -5136,6 +5185,7 @@
       "composite_phase": "Early cycle",
       "phase_color": "#0284c7",
       "cycle_x_pct": 3.7,
+      "sp500": 407.41,
       "indicator_components": {
         "defaults": {
           "level": -1.862,
@@ -5238,6 +5288,7 @@
       "composite_phase": "Early cycle",
       "phase_color": "#0284c7",
       "cycle_x_pct": 5.1,
+      "sp500": 415.05,
       "indicator_components": {
         "defaults": {
           "level": -1.716,
@@ -5340,6 +5391,7 @@
       "composite_phase": "Early cycle",
       "phase_color": "#0284c7",
       "cycle_x_pct": 6.2,
+      "sp500": 412.5,
       "indicator_components": {
         "defaults": {
           "level": -1.417,
@@ -5442,6 +5494,7 @@
       "composite_phase": "Early cycle",
       "phase_color": "#0284c7",
       "cycle_x_pct": 6.3,
+      "sp500": 435.23,
       "indicator_components": {
         "defaults": {
           "level": -1.203,
@@ -5544,6 +5597,7 @@
       "composite_phase": "Early cycle",
       "phase_color": "#0284c7",
       "cycle_x_pct": 6.5,
+      "sp500": 443.08,
       "indicator_components": {
         "defaults": {
           "level": -0.958,
@@ -5646,6 +5700,7 @@
       "composite_phase": "Early cycle",
       "phase_color": "#0284c7",
       "cycle_x_pct": 8.0,
+      "sp500": 447.29,
       "indicator_components": {
         "defaults": {
           "level": -0.714,
@@ -5748,6 +5803,7 @@
       "composite_phase": "Early cycle",
       "phase_color": "#0284c7",
       "cycle_x_pct": 11.7,
+      "sp500": 463.9,
       "indicator_components": {
         "defaults": {
           "level": -0.372,
@@ -5850,6 +5906,7 @@
       "composite_phase": "Early cycle",
       "phase_color": "#0284c7",
       "cycle_x_pct": 16.2,
+      "sp500": 472.99,
       "indicator_components": {
         "defaults": {
           "level": -0.213,
@@ -5952,6 +6009,7 @@
       "composite_phase": "Early cycle",
       "phase_color": "#0284c7",
       "cycle_x_pct": 20.5,
+      "sp500": 447.23,
       "indicator_components": {
         "defaults": {
           "level": 0.025,
@@ -6054,6 +6112,7 @@
       "composite_phase": "Mid-cycle",
       "phase_color": "#0d9488",
       "cycle_x_pct": 25.1,
+      "sp500": 451.4,
       "indicator_components": {
         "defaults": {
           "level": 0.135,
@@ -6156,6 +6215,7 @@
       "composite_phase": "Mid-cycle",
       "phase_color": "#0d9488",
       "cycle_x_pct": 29.1,
+      "sp500": 463.81,
       "indicator_components": {
         "defaults": {
           "level": 0.159,
@@ -6258,6 +6318,7 @@
       "composite_phase": "Mid-cycle",
       "phase_color": "#0d9488",
       "cycle_x_pct": 32.8,
+      "sp500": 465.25,
       "indicator_components": {
         "defaults": {
           "level": 0.196,
@@ -6360,6 +6421,7 @@
       "composite_phase": "Mid-cycle",
       "phase_color": "#0d9488",
       "cycle_x_pct": 37.2,
+      "sp500": 507.91,
       "indicator_components": {
         "defaults": {
           "level": 0.208,
@@ -6462,6 +6524,7 @@
       "composite_phase": "Mid-cycle",
       "phase_color": "#0d9488",
       "cycle_x_pct": 45.5,
+      "sp500": 557.37,
       "indicator_components": {
         "defaults": {
           "level": 0.226,
@@ -6564,6 +6627,7 @@
       "composite_phase": "Late cycle",
       "phase_color": "#16a34a",
       "cycle_x_pct": 58.5,
+      "sp500": 582.92,
       "indicator_components": {
         "defaults": {
           "level": 0.226,
@@ -6666,6 +6730,7 @@
       "composite_phase": "Late cycle",
       "phase_color": "#16a34a",
       "cycle_x_pct": 63.5,
+      "sp500": 614.42,
       "indicator_components": {
         "defaults": {
           "level": 0.232,
@@ -6768,6 +6833,7 @@
       "composite_phase": "Late cycle",
       "phase_color": "#16a34a",
       "cycle_x_pct": 63.7,
+      "sp500": 647.17,
       "indicator_components": {
         "defaults": {
           "level": 0.232,
@@ -6870,6 +6936,7 @@
       "composite_phase": "Late cycle",
       "phase_color": "#16a34a",
       "cycle_x_pct": 57.5,
+      "sp500": 644.07,
       "indicator_components": {
         "defaults": {
           "level": 0.263,
@@ -6972,6 +7039,7 @@
       "composite_phase": "Late cycle",
       "phase_color": "#16a34a",
       "cycle_x_pct": 57.7,
+      "sp500": 701.46,
       "indicator_components": {
         "defaults": {
           "level": 0.3,
@@ -7074,6 +7142,7 @@
       "composite_phase": "Late cycle",
       "phase_color": "#16a34a",
       "cycle_x_pct": 58.8,
+      "sp500": 766.22,
       "indicator_components": {
         "defaults": {
           "level": 0.33,
@@ -7176,6 +7245,7 @@
       "composite_phase": "Late cycle",
       "phase_color": "#16a34a",
       "cycle_x_pct": 58.2,
+      "sp500": 763.93,
       "indicator_components": {
         "defaults": {
           "level": 0.385,
@@ -7278,6 +7348,7 @@
       "composite_phase": "Late cycle",
       "phase_color": "#16a34a",
       "cycle_x_pct": 57.6,
+      "sp500": 925.29,
       "indicator_components": {
         "defaults": {
           "level": 0.44,
@@ -7380,6 +7451,7 @@
       "composite_phase": "Late cycle",
       "phase_color": "#16a34a",
       "cycle_x_pct": 62.2,
+      "sp500": 951.16,
       "indicator_components": {
         "defaults": {
           "level": 0.452,
@@ -7482,6 +7554,7 @@
       "composite_phase": "Late cycle",
       "phase_color": "#16a34a",
       "cycle_x_pct": 72.2,
+      "sp500": 963.36,
       "indicator_components": {
         "defaults": {
           "level": 0.385,
@@ -7584,6 +7657,7 @@
       "composite_phase": "Recession",
       "phase_color": "#9333ea",
       "cycle_x_pct": 75.5,
+      "sp500": 1112.2,
       "indicator_components": {
         "defaults": {
           "level": 0.434,
@@ -7686,6 +7760,7 @@
       "composite_phase": "Recession",
       "phase_color": "#9333ea",
       "cycle_x_pct": 76.3,
+      "sp500": 1156.58,
       "indicator_components": {
         "defaults": {
           "level": 0.41,
@@ -7788,6 +7863,7 @@
       "composite_phase": "Recession",
       "phase_color": "#9333ea",
       "cycle_x_pct": 77.6,
+      "sp500": 1032.47,
       "indicator_components": {
         "defaults": {
           "level": 0.348,
@@ -7890,6 +7966,7 @@
       "composite_phase": "Recession",
       "phase_color": "#9333ea",
       "cycle_x_pct": 86.9,
+      "sp500": 1248.77,
       "indicator_components": {
         "defaults": {
           "level": 0.287,
@@ -7992,6 +8069,7 @@
       "composite_phase": "Recession",
       "phase_color": "#9333ea",
       "cycle_x_pct": 89.2,
+      "sp500": 1334.76,
       "indicator_components": {
         "defaults": {
           "level": 0.269,
@@ -8094,6 +8172,7 @@
       "composite_phase": "Recession",
       "phase_color": "#9333ea",
       "cycle_x_pct": 90.0,
+      "sp500": 1380.99,
       "indicator_components": {
         "defaults": {
           "level": 0.232,
@@ -8196,6 +8275,7 @@
       "composite_phase": "Recession",
       "phase_color": "#9333ea",
       "cycle_x_pct": 91.3,
+      "sp500": 1300.01,
       "indicator_components": {
         "defaults": {
           "level": 0.275,
@@ -8298,6 +8378,7 @@
       "composite_phase": "Recession",
       "phase_color": "#9333ea",
       "cycle_x_pct": 92.1,
+      "sp500": 1425.59,
       "indicator_components": {
         "defaults": {
           "level": 0.202,
@@ -8400,6 +8481,7 @@
       "composite_phase": "Recession",
       "phase_color": "#9333ea",
       "cycle_x_pct": 93.2,
+      "sp500": 1461.36,
       "indicator_components": {
         "defaults": {
           "level": 0.122,
@@ -8502,6 +8584,7 @@
       "composite_phase": "Recession",
       "phase_color": "#9333ea",
       "cycle_x_pct": 93.9,
+      "sp500": 1473.0,
       "indicator_components": {
         "defaults": {
           "level": 0.068,
@@ -8604,6 +8687,7 @@
       "composite_phase": "Recession",
       "phase_color": "#9333ea",
       "cycle_x_pct": 95.0,
+      "sp500": 1390.14,
       "indicator_components": {
         "defaults": {
           "level": -0.049,
@@ -8706,6 +8790,7 @@
       "composite_phase": "Recession",
       "phase_color": "#9333ea",
       "cycle_x_pct": 94.3,
+      "sp500": 1335.63,
       "indicator_components": {
         "defaults": {
           "level": -0.128,
@@ -8808,6 +8893,7 @@
       "composite_phase": "Recession",
       "phase_color": "#9333ea",
       "cycle_x_pct": 94.5,
+      "sp500": 1189.84,
       "indicator_components": {
         "defaults": {
           "level": -0.305,
@@ -8910,6 +8996,7 @@
       "composite_phase": "Recession",
       "phase_color": "#9333ea",
       "cycle_x_pct": 95.0,
+      "sp500": 1204.45,
       "indicator_components": {
         "defaults": {
           "level": -0.5,
@@ -9012,6 +9099,7 @@
       "composite_phase": "Recession",
       "phase_color": "#9333ea",
       "cycle_x_pct": 95.1,
+      "sp500": 1076.59,
       "indicator_components": {
         "defaults": {
           "level": -0.635,
@@ -9114,6 +9202,7 @@
       "composite_phase": "Recession",
       "phase_color": "#9333ea",
       "cycle_x_pct": 96.4,
+      "sp500": 1140.21,
       "indicator_components": {
         "defaults": {
           "level": -0.763,
@@ -9216,6 +9305,7 @@
       "composite_phase": "Recession",
       "phase_color": "#9333ea",
       "cycle_x_pct": 99.2,
+      "sp500": 1111.93,
       "indicator_components": {
         "defaults": {
           "level": -0.904,
@@ -9318,6 +9408,7 @@
       "composite_phase": "Early cycle",
       "phase_color": "#0284c7",
       "cycle_x_pct": 1.8,
+      "sp500": 903.59,
       "indicator_components": {
         "defaults": {
           "level": -0.879,
@@ -9420,6 +9511,7 @@
       "composite_phase": "Early cycle",
       "phase_color": "#0284c7",
       "cycle_x_pct": 3.9,
+      "sp500": 854.63,
       "indicator_components": {
         "defaults": {
           "level": -0.879,
@@ -9522,6 +9614,7 @@
       "composite_phase": "Early cycle",
       "phase_color": "#0284c7",
       "cycle_x_pct": 5.6,
+      "sp500": 895.84,
       "indicator_components": {
         "defaults": {
           "level": -0.739,
@@ -9624,6 +9717,7 @@
       "composite_phase": "Early cycle",
       "phase_color": "#0284c7",
       "cycle_x_pct": 6.3,
+      "sp500": 890.03,
       "indicator_components": {
         "defaults": {
           "level": -0.684,
@@ -9726,6 +9820,7 @@
       "composite_phase": "Early cycle",
       "phase_color": "#0284c7",
       "cycle_x_pct": 7.6,
+      "sp500": 992.54,
       "indicator_components": {
         "defaults": {
           "level": -0.507,
@@ -9828,6 +9923,7 @@
       "composite_phase": "Early cycle",
       "phase_color": "#0284c7",
       "cycle_x_pct": 10.5,
+      "sp500": 1038.73,
       "indicator_components": {
         "defaults": {
           "level": -0.25,
@@ -9930,6 +10026,7 @@
       "composite_phase": "Early cycle",
       "phase_color": "#0284c7",
       "cycle_x_pct": 14.6,
+      "sp500": 1132.52,
       "indicator_components": {
         "defaults": {
           "level": -0.079,
@@ -10032,6 +10129,7 @@
       "composite_phase": "Early cycle",
       "phase_color": "#0284c7",
       "cycle_x_pct": 18.5,
+      "sp500": 1133.36,
       "indicator_components": {
         "defaults": {
           "level": 0.086,
@@ -10134,6 +10232,7 @@
       "composite_phase": "Early cycle",
       "phase_color": "#0284c7",
       "cycle_x_pct": 23.3,
+      "sp500": 1105.85,
       "indicator_components": {
         "defaults": {
           "level": 0.251,
@@ -10236,6 +10335,7 @@
       "composite_phase": "Mid-cycle",
       "phase_color": "#0d9488",
       "cycle_x_pct": 28.1,
+      "sp500": 1117.21,
       "indicator_components": {
         "defaults": {
           "level": 0.379,
@@ -10338,6 +10438,7 @@
       "composite_phase": "Mid-cycle",
       "phase_color": "#0d9488",
       "cycle_x_pct": 31.6,
+      "sp500": 1181.41,
       "indicator_components": {
         "defaults": {
           "level": 0.501,
@@ -10440,6 +10541,7 @@
       "composite_phase": "Mid-cycle",
       "phase_color": "#0d9488",
       "cycle_x_pct": 33.3,
+      "sp500": 1164.43,
       "indicator_components": {
         "defaults": {
           "level": 0.574,
@@ -10542,6 +10644,7 @@
       "composite_phase": "Mid-cycle",
       "phase_color": "#0d9488",
       "cycle_x_pct": 33.9,
+      "sp500": 1222.24,
       "indicator_components": {
         "defaults": {
           "level": 0.593,
@@ -10644,6 +10747,7 @@
       "composite_phase": "Mid-cycle",
       "phase_color": "#0d9488",
       "cycle_x_pct": 33.7,
+      "sp500": 1191.96,
       "indicator_components": {
         "defaults": {
           "level": 0.611,
@@ -10746,6 +10850,7 @@
       "composite_phase": "Mid-cycle",
       "phase_color": "#0d9488",
       "cycle_x_pct": 37.8,
+      "sp500": 1278.73,
       "indicator_components": {
         "defaults": {
           "level": 0.642,
@@ -10848,6 +10953,7 @@
       "composite_phase": "Mid-cycle",
       "phase_color": "#0d9488",
       "cycle_x_pct": 40.0,
+      "sp500": 1302.17,
       "indicator_components": {
         "defaults": {
           "level": 0.697,
@@ -10950,6 +11056,7 @@
       "composite_phase": "Mid-cycle",
       "phase_color": "#0d9488",
       "cycle_x_pct": 41.6,
+      "sp500": 1260.24,
       "indicator_components": {
         "defaults": {
           "level": 0.721,
@@ -11052,6 +11159,7 @@
       "composite_phase": "Mid-cycle",
       "phase_color": "#0d9488",
       "cycle_x_pct": 43.5,
+      "sp500": 1363.38,
       "indicator_components": {
         "defaults": {
           "level": 0.788,
@@ -11154,6 +11262,7 @@
       "composite_phase": "Mid-cycle",
       "phase_color": "#0d9488",
       "cycle_x_pct": 46.2,
+      "sp500": 1424.16,
       "indicator_components": {
         "defaults": {
           "level": 0.764,
@@ -11256,6 +11365,7 @@
       "composite_phase": "Mid-cycle",
       "phase_color": "#0d9488",
       "cycle_x_pct": 47.6,
+      "sp500": 1463.64,
       "indicator_components": {
         "defaults": {
           "level": 0.764,
@@ -11358,6 +11468,7 @@
       "composite_phase": "Mid-cycle",
       "phase_color": "#0d9488",
       "cycle_x_pct": 49.3,
+      "sp500": 1520.71,
       "indicator_components": {
         "defaults": {
           "level": 0.752,
@@ -11460,6 +11571,7 @@
       "composite_phase": "Late cycle",
       "phase_color": "#16a34a",
       "cycle_x_pct": 50.9,
+      "sp500": 1539.66,
       "indicator_components": {
         "defaults": {
           "level": 0.697,
@@ -11562,6 +11674,7 @@
       "composite_phase": "Late cycle",
       "phase_color": "#16a34a",
       "cycle_x_pct": 55.3,
+      "sp500": 1378.76,
       "indicator_components": {
         "defaults": {
           "level": 0.611,
@@ -11664,6 +11777,7 @@
       "composite_phase": "Late cycle",
       "phase_color": "#16a34a",
       "cycle_x_pct": 60.8,
+      "sp500": 1370.47,
       "indicator_components": {
         "defaults": {
           "level": 0.41,
@@ -11766,6 +11880,7 @@
       "composite_phase": "Late cycle",
       "phase_color": "#16a34a",
       "cycle_x_pct": 67.5,
+      "sp500": 1257.33,
       "indicator_components": {
         "defaults": {
           "level": 0.41,
@@ -11868,6 +11983,7 @@
       "composite_phase": "Recession",
       "phase_color": "#9333ea",
       "cycle_x_pct": 79.3,
+      "sp500": 968.8,
       "indicator_components": {
         "defaults": {
           "level": -0.061,
@@ -11970,6 +12086,7 @@
       "composite_phase": "Recession",
       "phase_color": "#9333ea",
       "cycle_x_pct": 85.5,
+      "sp500": 865.58,
       "indicator_components": {
         "defaults": {
           "level": -0.445,
@@ -12072,6 +12189,7 @@
       "composite_phase": "Recession",
       "phase_color": "#9333ea",
       "cycle_x_pct": 89.2,
+      "sp500": 848.15,
       "indicator_components": {
         "defaults": {
           "level": -0.818,
@@ -12174,6 +12292,7 @@
       "composite_phase": "Recession",
       "phase_color": "#9333ea",
       "cycle_x_pct": 92.8,
+      "sp500": 935.82,
       "indicator_components": {
         "defaults": {
           "level": -1.191,
@@ -12276,6 +12395,7 @@
       "composite_phase": "Recession",
       "phase_color": "#9333ea",
       "cycle_x_pct": 97.8,
+      "sp500": 1067.66,
       "indicator_components": {
         "defaults": {
           "level": -1.117,
@@ -12378,6 +12498,7 @@
       "composite_phase": "Early cycle",
       "phase_color": "#0284c7",
       "cycle_x_pct": 4.9,
+      "sp500": 1123.58,
       "indicator_components": {
         "defaults": {
           "level": -0.904,
@@ -12480,6 +12601,7 @@
       "composite_phase": "Early cycle",
       "phase_color": "#0284c7",
       "cycle_x_pct": 13.9,
+      "sp500": 1197.32,
       "indicator_components": {
         "defaults": {
           "level": -0.733,
@@ -12582,6 +12704,7 @@
       "composite_phase": "Early cycle",
       "phase_color": "#0284c7",
       "cycle_x_pct": 24.6,
+      "sp500": 1079.8,
       "indicator_components": {
         "defaults": {
           "level": -0.537,
@@ -12684,6 +12807,7 @@
       "composite_phase": "Mid-cycle",
       "phase_color": "#0d9488",
       "cycle_x_pct": 28.7,
+      "sp500": 1171.58,
       "indicator_components": {
         "defaults": {
           "level": -0.317,
@@ -12786,6 +12910,7 @@
       "composite_phase": "Mid-cycle",
       "phase_color": "#0d9488",
       "cycle_x_pct": 36.9,
+      "sp500": 1282.62,
       "indicator_components": {
         "defaults": {
           "level": 0.0,
@@ -12888,6 +13013,7 @@
       "composite_phase": "Mid-cycle",
       "phase_color": "#0d9488",
       "cycle_x_pct": 40.2,
+      "sp500": 1331.51,
       "indicator_components": {
         "defaults": {
           "level": 0.196,
@@ -12990,6 +13116,7 @@
       "composite_phase": "Mid-cycle",
       "phase_color": "#0d9488",
       "cycle_x_pct": 41.3,
+      "sp500": 1325.19,
       "indicator_components": {
         "defaults": {
           "level": 0.367,
@@ -13092,6 +13219,7 @@
       "composite_phase": "Mid-cycle",
       "phase_color": "#0d9488",
       "cycle_x_pct": 41.2,
+      "sp500": 1207.22,
       "indicator_components": {
         "defaults": {
           "level": 0.489,
@@ -13194,6 +13322,7 @@
       "composite_phase": "Mid-cycle",
       "phase_color": "#0d9488",
       "cycle_x_pct": 42.5,
+      "sp500": 1300.58,
       "indicator_components": {
         "defaults": {
           "level": 0.556,
@@ -13296,6 +13425,7 @@
       "composite_phase": "Mid-cycle",
       "phase_color": "#0d9488",
       "cycle_x_pct": 44.8,
+      "sp500": 1386.43,
       "indicator_components": {
         "defaults": {
           "level": 0.635,
@@ -13398,6 +13528,7 @@
       "composite_phase": "Mid-cycle",
       "phase_color": "#0d9488",
       "cycle_x_pct": 48.3,
+      "sp500": 1359.78,
       "indicator_components": {
         "defaults": {
           "level": 0.727,
@@ -13500,6 +13631,7 @@
       "composite_phase": "Late cycle",
       "phase_color": "#16a34a",
       "cycle_x_pct": 50.8,
+      "sp500": 1437.82,
       "indicator_components": {
         "defaults": {
           "level": 0.77,
@@ -13602,6 +13734,7 @@
       "composite_phase": "Late cycle",
       "phase_color": "#16a34a",
       "cycle_x_pct": 54.4,
+      "sp500": 1480.4,
       "indicator_components": {
         "defaults": {
           "level": 0.813,
@@ -13704,6 +13837,7 @@
       "composite_phase": "Late cycle",
       "phase_color": "#16a34a",
       "cycle_x_pct": 52.9,
+      "sp500": 1570.7,
       "indicator_components": {
         "defaults": {
           "level": 0.855,
@@ -13806,6 +13940,7 @@
       "composite_phase": "Late cycle",
       "phase_color": "#16a34a",
       "cycle_x_pct": 51.4,
+      "sp500": 1668.68,
       "indicator_components": {
         "defaults": {
           "level": 0.892,
@@ -13908,6 +14043,7 @@
       "composite_phase": "Late cycle",
       "phase_color": "#16a34a",
       "cycle_x_pct": 50.0,
+      "sp500": 1720.03,
       "indicator_components": {
         "defaults": {
           "level": 0.947,
@@ -14010,6 +14146,7 @@
       "composite_phase": "Mid-cycle",
       "phase_color": "#0d9488",
       "cycle_x_pct": 48.9,
+      "sp500": 1822.36,
       "indicator_components": {
         "defaults": {
           "level": 0.941,
@@ -14112,6 +14249,7 @@
       "composite_phase": "Mid-cycle",
       "phase_color": "#0d9488",
       "cycle_x_pct": 49.7,
+      "sp500": 1864.26,
       "indicator_components": {
         "defaults": {
           "level": 1.002,
@@ -14214,6 +14352,7 @@
       "composite_phase": "Mid-cycle",
       "phase_color": "#0d9488",
       "cycle_x_pct": 49.1,
+      "sp500": 1973.1,
       "indicator_components": {
         "defaults": {
           "level": 1.02,
@@ -14316,6 +14455,7 @@
       "composite_phase": "Late cycle",
       "phase_color": "#16a34a",
       "cycle_x_pct": 50.1,
+      "sp500": 1937.27,
       "indicator_components": {
         "defaults": {
           "level": 1.051,
@@ -14418,6 +14558,7 @@
       "composite_phase": "Late cycle",
       "phase_color": "#16a34a",
       "cycle_x_pct": 52.0,
+      "sp500": 2028.18,
       "indicator_components": {
         "defaults": {
           "level": 1.032,
@@ -14520,6 +14661,7 @@
       "composite_phase": "Late cycle",
       "phase_color": "#16a34a",
       "cycle_x_pct": 54.2,
+      "sp500": 2094.86,
       "indicator_components": {
         "defaults": {
           "level": 0.996,
@@ -14622,6 +14764,7 @@
       "composite_phase": "Late cycle",
       "phase_color": "#16a34a",
       "cycle_x_pct": 57.6,
+      "sp500": 2094.14,
       "indicator_components": {
         "defaults": {
           "level": 0.941,
@@ -14724,6 +14867,7 @@
       "composite_phase": "Late cycle",
       "phase_color": "#16a34a",
       "cycle_x_pct": 61.1,
+      "sp500": 2024.81,
       "indicator_components": {
         "defaults": {
           "level": 0.868,
@@ -14826,6 +14970,7 @@
       "composite_phase": "Late cycle",
       "phase_color": "#16a34a",
       "cycle_x_pct": 61.3,
+      "sp500": 1918.6,
       "indicator_components": {
         "defaults": {
           "level": 0.574,
@@ -14928,6 +15073,7 @@
       "composite_phase": "Late cycle",
       "phase_color": "#16a34a",
       "cycle_x_pct": 60.2,
+      "sp500": 2075.54,
       "indicator_components": {
         "defaults": {
           "level": 0.513,
@@ -15030,6 +15176,7 @@
       "composite_phase": "Late cycle",
       "phase_color": "#16a34a",
       "cycle_x_pct": 61.9,
+      "sp500": 2148.9,
       "indicator_components": {
         "defaults": {
           "level": 0.519,
@@ -15132,6 +15279,7 @@
       "composite_phase": "Late cycle",
       "phase_color": "#16a34a",
       "cycle_x_pct": 63.8,
+      "sp500": 2143.02,
       "indicator_components": {
         "defaults": {
           "level": 0.526,
@@ -15234,6 +15382,7 @@
       "composite_phase": "Late cycle",
       "phase_color": "#16a34a",
       "cycle_x_pct": 52.9,
+      "sp500": 2275.12,
       "indicator_components": {
         "defaults": {
           "level": 0.556,
@@ -15336,6 +15485,7 @@
       "composite_phase": "Late cycle",
       "phase_color": "#16a34a",
       "cycle_x_pct": 50.6,
+      "sp500": 2359.31,
       "indicator_components": {
         "defaults": {
           "level": 0.666,
@@ -15438,6 +15588,7 @@
       "composite_phase": "Mid-cycle",
       "phase_color": "#0d9488",
       "cycle_x_pct": 46.5,
+      "sp500": 2454.1,
       "indicator_components": {
         "defaults": {
           "level": 0.715,
@@ -15540,6 +15691,7 @@
       "composite_phase": "Mid-cycle",
       "phase_color": "#0d9488",
       "cycle_x_pct": 44.2,
+      "sp500": 2557.0,
       "indicator_components": {
         "defaults": {
           "level": 0.77,
@@ -15642,6 +15794,7 @@
       "composite_phase": "Mid-cycle",
       "phase_color": "#0d9488",
       "cycle_x_pct": 45.0,
+      "sp500": 2789.8,
       "indicator_components": {
         "defaults": {
           "level": 0.813,
@@ -15744,6 +15897,7 @@
       "composite_phase": "Mid-cycle",
       "phase_color": "#0d9488",
       "cycle_x_pct": 46.4,
+      "sp500": 2653.63,
       "indicator_components": {
         "defaults": {
           "level": 0.831,
@@ -15846,6 +16000,7 @@
       "composite_phase": "Mid-cycle",
       "phase_color": "#0d9488",
       "cycle_x_pct": 49.1,
+      "sp500": 2793.64,
       "indicator_components": {
         "defaults": {
           "level": 0.886,
@@ -15948,6 +16103,7 @@
       "composite_phase": "Mid-cycle",
       "phase_color": "#0d9488",
       "cycle_x_pct": 47.9,
+      "sp500": 2785.46,
       "indicator_components": {
         "defaults": {
           "level": 0.916,
@@ -16050,6 +16206,7 @@
       "composite_phase": "Mid-cycle",
       "phase_color": "#0d9488",
       "cycle_x_pct": 49.6,
+      "sp500": 2607.39,
       "indicator_components": {
         "defaults": {
           "level": 0.782,
@@ -16152,6 +16309,7 @@
       "composite_phase": "Late cycle",
       "phase_color": "#16a34a",
       "cycle_x_pct": 55.3,
+      "sp500": 2903.8,
       "indicator_components": {
         "defaults": {
           "level": 0.837,
@@ -16254,6 +16412,7 @@
       "composite_phase": "Late cycle",
       "phase_color": "#16a34a",
       "cycle_x_pct": 60.0,
+      "sp500": 2996.11,
       "indicator_components": {
         "defaults": {
           "level": 0.806,
@@ -16356,6 +16515,7 @@
       "composite_phase": "Late cycle",
       "phase_color": "#16a34a",
       "cycle_x_pct": 67.4,
+      "sp500": 2977.68,
       "indicator_components": {
         "defaults": {
           "level": 0.825,
@@ -16458,6 +16618,7 @@
       "composite_phase": "Late cycle",
       "phase_color": "#16a34a",
       "cycle_x_pct": 73.3,
+      "sp500": 3278.2,
       "indicator_components": {
         "defaults": {
           "level": 0.794,
@@ -16560,6 +16721,7 @@
       "composite_phase": "Recession",
       "phase_color": "#9333ea",
       "cycle_x_pct": 78.7,
+      "sp500": 2761.98,
       "indicator_components": {
         "defaults": {
           "level": 0.709,
@@ -16662,6 +16824,7 @@
       "composite_phase": "Recession",
       "phase_color": "#9333ea",
       "cycle_x_pct": 76.3,
+      "sp500": 3207.62,
       "indicator_components": {
         "defaults": {
           "level": 0.697,
@@ -16764,6 +16927,7 @@
       "composite_phase": "Recession",
       "phase_color": "#9333ea",
       "cycle_x_pct": 89.3,
+      "sp500": 3418.7,
       "indicator_components": {
         "defaults": {
           "level": 0.733,
@@ -16866,6 +17030,7 @@
       "composite_phase": "Mid-cycle",
       "phase_color": "#0d9488",
       "cycle_x_pct": 38.2,
+      "sp500": 3793.75,
       "indicator_components": {
         "defaults": {
           "level": 0.782,
@@ -16968,6 +17133,7 @@
       "composite_phase": "Mid-cycle",
       "phase_color": "#0d9488",
       "cycle_x_pct": 40.8,
+      "sp500": 4141.18,
       "indicator_components": {
         "defaults": {
           "level": 0.843,
@@ -17070,6 +17236,7 @@
       "composite_phase": "Mid-cycle",
       "phase_color": "#0d9488",
       "cycle_x_pct": 42.2,
+      "sp500": 4363.71,
       "indicator_components": {
         "defaults": {
           "level": 0.861,
@@ -17172,6 +17339,7 @@
       "composite_phase": "Mid-cycle",
       "phase_color": "#0d9488",
       "cycle_x_pct": 42.8,
+      "sp500": 4460.71,
       "indicator_components": {
         "defaults": {
           "level": 0.806,
@@ -17274,6 +17442,7 @@
       "composite_phase": "Mid-cycle",
       "phase_color": "#0d9488",
       "cycle_x_pct": 43.7,
+      "sp500": 4573.82,
       "indicator_components": {
         "defaults": {
           "level": 0.849,
@@ -17376,6 +17545,7 @@
       "composite_phase": "Mid-cycle",
       "phase_color": "#0d9488",
       "cycle_x_pct": 45.1,
+      "sp500": 4391.3,
       "indicator_components": {
         "defaults": {
           "level": 0.861,
@@ -17478,6 +17648,7 @@
       "composite_phase": "Mid-cycle",
       "phase_color": "#0d9488",
       "cycle_x_pct": 46.5,
+      "sp500": 3911.73,
       "indicator_components": {
         "defaults": {
           "level": 0.806,
@@ -17580,6 +17751,7 @@
       "composite_phase": "Mid-cycle",
       "phase_color": "#0d9488",
       "cycle_x_pct": 47.8,
+      "sp500": 3726.05,
       "indicator_components": {
         "defaults": {
           "level": 0.868,
@@ -17682,6 +17854,7 @@
       "composite_phase": "Late cycle",
       "phase_color": "#16a34a",
       "cycle_x_pct": 51.3,
+      "sp500": 3960.66,
       "indicator_components": {
         "defaults": {
           "level": 0.898,
@@ -17784,6 +17957,7 @@
       "composite_phase": "Late cycle",
       "phase_color": "#16a34a",
       "cycle_x_pct": 53.7,
+      "sp500": 4121.47,
       "indicator_components": {
         "defaults": {
           "level": 0.88,
@@ -17886,6 +18060,7 @@
       "composite_phase": "Late cycle",
       "phase_color": "#16a34a",
       "cycle_x_pct": 53.1,
+      "sp500": 4508.08,
       "indicator_components": {
         "defaults": {
           "level": 0.892,
@@ -17988,6 +18163,7 @@
       "composite_phase": "Late cycle",
       "phase_color": "#16a34a",
       "cycle_x_pct": 52.3,
+      "sp500": 4269.4,
       "indicator_components": {
         "defaults": {
           "level": 0.868,
@@ -18090,6 +18266,7 @@
       "composite_phase": "Late cycle",
       "phase_color": "#16a34a",
       "cycle_x_pct": 54.0,
+      "sp500": 4804.49,
       "indicator_components": {
         "defaults": {
           "level": 0.813,
@@ -18192,6 +18369,7 @@
       "composite_phase": "Late cycle",
       "phase_color": "#16a34a",
       "cycle_x_pct": 56.8,
+      "sp500": 5112.49,
       "indicator_components": {
         "defaults": {
           "level": 0.788,
@@ -18294,6 +18472,7 @@
       "composite_phase": "Late cycle",
       "phase_color": "#16a34a",
       "cycle_x_pct": 60.8,
+      "sp500": 5538.0,
       "indicator_components": {
         "defaults": {
           "level": 0.77,
@@ -18396,6 +18575,7 @@
       "composite_phase": "Late cycle",
       "phase_color": "#16a34a",
       "cycle_x_pct": 65.1,
+      "sp500": 5792.32,
       "indicator_components": {
         "defaults": {
           "level": 0.715,
@@ -18498,6 +18678,7 @@
       "composite_phase": "Late cycle",
       "phase_color": "#16a34a",
       "cycle_x_pct": 60.9,
+      "sp500": 5979.52,
       "indicator_components": {
         "defaults": {
           "level": 0.709,
@@ -18600,6 +18781,7 @@
       "composite_phase": "Late cycle",
       "phase_color": "#16a34a",
       "cycle_x_pct": 60.2,
+      "sp500": 5369.5,
       "indicator_components": {
         "defaults": {
           "level": 0.703,
@@ -18702,6 +18884,7 @@
       "composite_phase": "Late cycle",
       "phase_color": "#16a34a",
       "cycle_x_pct": 52.4,
+      "sp500": 6296.5,
       "indicator_components": {
         "defaults": {
           "level": 0.678,
@@ -18804,6 +18987,7 @@
       "composite_phase": "Mid-cycle",
       "phase_color": "#0d9488",
       "cycle_x_pct": 48.3,
+      "sp500": 6735.69,
       "indicator_components": {
         "defaults": {
           "level": 0.672,
@@ -18906,6 +19090,7 @@
       "composite_phase": "Mid-cycle",
       "phase_color": "#0d9488",
       "cycle_x_pct": 46.9,
+      "sp500": 6929.12,
       "indicator_components": {
         "defaults": {
           "level": 0.678,
@@ -19008,6 +19193,7 @@
       "composite_phase": "Mid-cycle",
       "phase_color": "#0d9488",
       "cycle_x_pct": 45.2,
+      "sp500": 6957.01,
       "indicator_components": {
         "defaults": {
           "level": 0.715,
@@ -19110,6 +19296,7 @@
       "composite_phase": "Mid-cycle",
       "phase_color": "#0d9488",
       "cycle_x_pct": 45.1,
+      "sp500": 7481.34,
       "indicator_components": {
         "defaults": {
           "level": 0.715,
@@ -19213,6 +19400,7 @@
     "composite_phase": "Mid-cycle",
     "phase_color": "#0d9488",
     "cycle_x_pct": 45.1,
+    "sp500": 7481.34,
     "indicator_components": {
       "defaults": {
         "level": 0.715,

@@ -87,6 +87,23 @@ def fetch_fred(sid):
                 pass
     print(f"{len(data)} obs"); return data
 
+def fetch_sp500_quarterly():
+    """Fetch monthly S&P 500 price history back to 1980 from datasets/s-and-p-500."""
+    url = "https://raw.githubusercontent.com/datasets/s-and-p-500/main/data/data.csv"
+    print("  S&P 500 history ...", end=" ")
+    res = subprocess.run(["curl.exe", "-s", url], capture_output=True, text=True)
+    data = {}
+    if res.returncode != 0:
+        print("FAILED"); return data
+    for row in csv.reader(res.stdout.strip().split("\n")[1:]):
+        if len(row) >= 2 and row[1] not in ('.', '', 'NA'):
+            try:
+                data[row[0].strip()] = round(float(row[1].strip()), 2)
+            except ValueError:
+                pass
+    print(f"{len(data)} obs")
+    return data
+
 def full_zscore(arr):
     """Z-score over full sample."""
     a = np.asarray(arr, float)
@@ -143,6 +160,7 @@ def run_pipeline():
     print("=== Credit Cycle Pipeline v4 (Phase-Plane) ===\n")
     print("Fetching FRED:")
     raw = {k: fetch_fred(v) for k, v in SERIES_MAP.items()}
+    sp500_raw = fetch_sp500_quarterly()
     print()
 
     # ── Quarterly date grid ──────────────────────────────────────────────────
@@ -170,6 +188,13 @@ def run_pipeline():
     bb_arr   = np.abs(build('buybacks', 50000.)) / 1000.    # $B
     mna_arr  = build('mna',       40000.) / 1000.            # $B
     csh_arr  = build('cash',      90.)
+
+    sp500_arr = np.zeros(N)
+    prev_sp = 110.9
+    for i, d in enumerate(dates):
+        v = sp500_raw.get(d, None)
+        if v is not None: prev_sp = v
+        sp500_arr[i] = prev_sp
 
     # Find when each series actually starts (has real data from FRED)
     def first_date(key):
@@ -314,6 +339,7 @@ def run_pipeline():
             'composite_phase':  phase_name,
             'phase_color':      phase_color,
             'cycle_x_pct':      round(S / 4. * 100., 1),
+            'sp500':            round(float(sp500_arr[i]), 2),
 
             # Per-indicator level + momentum for frontend re-weighting
             'indicator_components': {

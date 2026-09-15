@@ -109,11 +109,19 @@
           </h2>
         </div>
         
-        <!-- Timeline Slider Controller -->
-        <div class="flex items-center gap-3 bg-slate-900/90 px-3.5 py-1.5 rounded-xl border border-slate-800">
-          <span class="text-xs text-slate-400 font-semibold whitespace-nowrap">Scrubber:</span>
-          <input type="range" id="history-slider" min="0" max="186" value="186" class="w-40 md:w-56">
-          <span id="slider-label" class="text-xs font-mono text-sky-400 font-bold whitespace-nowrap">Q3 2026</span>
+        <!-- Controls: S&P 500 Toggle & Timeline Slider -->
+        <div class="flex flex-wrap items-center gap-2.5">
+          <button id="toggle-sp500-btn" class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition-all">
+            <span class="w-2 h-2 rounded-full bg-amber-400 inline-block"></span>
+            <span>S&P 500</span>
+            <span id="sp500-status-tag" class="text-[10px] font-mono text-slate-400 ml-0.5">OFF</span>
+          </button>
+
+          <div class="flex items-center gap-2.5 bg-slate-900/90 px-3 py-1.5 rounded-xl border border-slate-800">
+            <span class="text-xs text-slate-400 font-semibold whitespace-nowrap">Scrubber:</span>
+            <input type="range" id="history-slider" min="0" max="186" value="186" class="w-36 md:w-48">
+            <span id="slider-label" class="text-xs font-mono text-sky-400 font-bold whitespace-nowrap">Q3 2026</span>
+          </div>
         </div>
       </div>
 

@@ -25,6 +25,7 @@ const EWMA_A  = 0.50;
 
 let selectedIndex = 0;
 let historyChart  = null;
+let showSP500     = false;
 
 // ── Invesco phase definitions ─────────────────────────────────────────────
 const PHASES = [
@@ -497,19 +498,85 @@ function syncSliders() {
 // ── Timeline Slider ────────────────────────────────────────────────────────
 function setupTimelineSlider() {
   const slider = document.getElementById('history-slider');
-  if (!slider) return;
-  slider.min = 0;
-  slider.max = cycleData.timeline.length - 1;
-  slider.value = selectedIndex;
-  slider.addEventListener('input', e => {
-    selectedIndex = parseInt(e.target.value);
-    updateDashboard();
-  });
+  if (slider) {
+    slider.min = 0;
+    slider.max = cycleData.timeline.length - 1;
+    slider.value = selectedIndex;
+    slider.addEventListener('input', e => {
+      selectedIndex = parseInt(e.target.value);
+      updateDashboard();
+    });
+  }
+
+  const spBtn = document.getElementById('toggle-sp500-btn');
+  const spTag = document.getElementById('sp500-status-tag');
+  if (spBtn) {
+    spBtn.addEventListener('click', () => {
+      showSP500 = !showSP500;
+      if (showSP500) {
+        spBtn.classList.add('bg-amber-950/60', 'border-amber-600/60', 'text-amber-300');
+        spBtn.classList.remove('bg-slate-800', 'border-slate-700', 'text-slate-300');
+        if (spTag) {
+          spTag.innerText = 'ON';
+          spTag.className = 'text-[10px] font-mono text-amber-400 font-bold ml-0.5';
+        }
+      } else {
+        spBtn.classList.remove('bg-amber-950/60', 'border-amber-600/60', 'text-amber-300');
+        spBtn.classList.add('bg-slate-800', 'border-slate-700', 'text-slate-300');
+        if (spTag) {
+          spTag.innerText = 'OFF';
+          spTag.className = 'text-[10px] font-mono text-slate-400 ml-0.5';
+        }
+      }
+      updateHistoryChart();
+    });
+  }
 }
 
-// ── Custom Plugin for Scrubber Vertical Dotted Line on History Chart ───────
-const scrubberLinePlugin = {
-  id: 'scrubberLine',
+// ── Custom Plugin for Scrubber & Phase Stage Vertical Lines ───────────────
+const historyDecorationsPlugin = {
+  id: 'historyDecorations',
+  beforeDatasetsDraw(chart) {
+    const { ctx, chartArea: { top, bottom }, scales: { x } } = chart;
+    if (!cycleData?.timeline) return;
+
+    const scores = getCachedScores();
+    ctx.save();
+
+    // Detect and draw vertical lines wherever cycle score crosses a stage boundary
+    // Stages: 0: Early (<1), 1: Mid (<2), 2: Late (<3), 3: Recession (>=3)
+    const stageColors = ['#0284c7', '#0d9488', '#16a34a', '#9333ea'];
+    const stageLabels = ['EARLY', 'MID', 'LATE', 'RECESSION'];
+
+    for (let i = 1; i < scores.length; i++) {
+      const prevStage = Math.min(3, Math.floor(scores[i - 1]));
+      const currStage = Math.min(3, Math.floor(scores[i]));
+
+      if (prevStage !== currStage) {
+        const xPos = x.getPixelForValue(i);
+        if (xPos >= x.left && xPos <= x.right) {
+          const color = stageColors[currStage];
+
+          // Vertical stage line
+          ctx.beginPath();
+          ctx.setLineDash([3, 3]);
+          ctx.lineWidth = 1.25;
+          ctx.strokeStyle = color + '99';
+          ctx.moveTo(xPos, top);
+          ctx.lineTo(xPos, bottom);
+          ctx.stroke();
+
+          // Stage transition badge at the top
+          ctx.setLineDash([]);
+          ctx.font = 'bold 8.5px system-ui, sans-serif';
+          ctx.fillStyle = color;
+          ctx.textAlign = 'center';
+          ctx.fillText(stageLabels[currStage], xPos, top + 10);
+        }
+      }
+    }
+    ctx.restore();
+  },
   afterDatasetsDraw(chart) {
     const { ctx, chartArea: { top, bottom }, scales: { x } } = chart;
     if (selectedIndex === undefined || selectedIndex === null) return;
@@ -517,6 +584,7 @@ const scrubberLinePlugin = {
     if (xPos < x.left || xPos > x.right) return;
 
     ctx.save();
+    // Scrubber vertical dotted line
     ctx.beginPath();
     ctx.setLineDash([4, 4]);
     ctx.lineWidth = 2;
@@ -540,46 +608,80 @@ const scrubberLinePlugin = {
 function initHistoryChart() {
   const ctx = document.getElementById('historyChart')?.getContext('2d');
   if (!ctx) return;
-  const scores  = getCachedScores();
-  const labels  = cycleData.timeline.map(r => r.quarter_label);
+  const scores   = getCachedScores();
+  const labels   = cycleData.timeline.map(r => r.quarter_label);
+  const sp500Arr = cycleData.timeline.map(r => r.sp500 ?? null);
 
   historyChart = new Chart(ctx, {
     type: 'line',
     data: {
       labels,
-      datasets: [{
-        label: 'Credit Cycle Score',
-        data: scores,
-        borderColor: '#38bdf8',
-        borderWidth: 2,
-        pointRadius: 0,
-        pointHoverRadius: 6,
-        fill: true,
-        backgroundColor: (ctx) => {
-          const { chart: ch, chartArea: ca } = ctx;
-          if (!ca) return null;
-          const g = ch.ctx.createLinearGradient(0, ca.top, 0, ca.bottom);
-          g.addColorStop(0, 'rgba(56, 189, 248, 0.25)');
-          g.addColorStop(1, 'rgba(56, 189, 248, 0.00)');
-          return g;
+      datasets: [
+        {
+          label: 'Credit Cycle Score',
+          data: scores,
+          borderColor: '#38bdf8',
+          borderWidth: 2,
+          pointRadius: 0,
+          pointHoverRadius: 6,
+          fill: true,
+          backgroundColor: (ctx) => {
+            const { chart: ch, chartArea: ca } = ctx;
+            if (!ca) return null;
+            const g = ch.ctx.createLinearGradient(0, ca.top, 0, ca.bottom);
+            g.addColorStop(0, 'rgba(56, 189, 248, 0.25)');
+            g.addColorStop(1, 'rgba(56, 189, 248, 0.00)');
+            return g;
+          },
+          tension: 0.3,
+          yAxisID: 'y',
         },
-        tension: 0.3,
-      }]
+        {
+          label: 'S&P 500 Price ($)',
+          data: sp500Arr,
+          borderColor: '#f59e0b',
+          borderWidth: 2,
+          pointRadius: 0,
+          pointHoverRadius: 5,
+          fill: false,
+          tension: 0.2,
+          hidden: !showSP500,
+          yAxisID: 'y1',
+        }
+      ]
     },
-    plugins: [scrubberLinePlugin],
+    plugins: [historyDecorationsPlugin],
     options: {
       responsive: true, maintainAspectRatio: false,
       interaction: { mode: 'index', intersect: false },
       plugins: {
-        legend: { display: false },
+        legend: {
+          display: true,
+          position: 'top',
+          align: 'end',
+          labels: {
+            color: '#94a3b8',
+            font: { size: 11 },
+            boxWidth: 12,
+            boxHeight: 12,
+            usePointStyle: true,
+            filter: (item) => showSP500 ? true : item.text !== 'S&P 500 Price ($)'
+          }
+        },
         tooltip: {
           backgroundColor: '#0f172a', titleColor: '#f8fafc',
           bodyColor: '#cbd5e1', borderColor: '#334155', borderWidth: 1, padding: 10,
           callbacks: {
             label: item => {
-              const s = item.parsed.y;
-              const ph = getPhaseFromScore(s);
-              return [`Score: ${s.toFixed(2)} / 4.0`, `Phase: ${ph.name}`];
+              if (item.datasetIndex === 0) {
+                const s = item.parsed.y;
+                const ph = getPhaseFromScore(s);
+                return [`Cycle Score: ${s.toFixed(2)} / 4.0 (${ph.name})`];
+              } else if (item.datasetIndex === 1) {
+                const p = item.parsed.y;
+                return [`S&P 500: $${p.toLocaleString('en-US', { minimumFractionDigits: 2 })}`];
+              }
+              return '';
             }
           }
         }
@@ -590,11 +692,24 @@ function initHistoryChart() {
           ticks: { color: '#64748b', maxTicksLimit: 16, font: { size: 10 } }
         },
         y: {
+          type: 'linear',
+          display: true,
+          position: 'left',
           min: 0, max: 4,
           grid: { color: 'rgba(255,255,255,0.06)' },
           ticks: {
             color: '#64748b', stepSize: 1,
             callback: v => ['Early', 'Mid', 'Late', 'Recession', ''][v] ?? ''
+          }
+        },
+        y1: {
+          type: 'linear',
+          display: showSP500,
+          position: 'right',
+          grid: { drawOnChartArea: false },
+          ticks: {
+            color: '#f59e0b',
+            callback: v => '$' + v.toLocaleString()
           }
         }
       },
@@ -608,6 +723,8 @@ function initHistoryChart() {
 function updateHistoryChart(scores) {
   if (!historyChart) return;
   historyChart.data.datasets[0].data = scores || getCachedScores();
+  historyChart.data.datasets[1].hidden = !showSP500;
+  historyChart.options.scales.y1.display = showSP500;
   historyChart.update('none');
 }
 
