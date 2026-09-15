@@ -1,745 +1,677 @@
 /**
- * Credit Cycle Web Dashboard - Core Engine
- * Renders Invesco Credit Cycle slope, 20-year historical trajectory,
- * dynamic weighting calculator, and real-time Invesco reference matrix.
+ * Credit Cycle Web Dashboard v3
+ * ==============================
+ * Uses the z-score expansion pressure model from fetch_data.py.
+ * When user adjusts weights:
+ *   → Re-computes composite pressure per quarter using stored indicator_pressures
+ *   → Maps to raw score via tanh
+ *   → Applies zero-phase EWMA smoothing (forward + backward)
+ *   → Re-renders slope marker and history chart
  */
 
 let cycleData = null;
 let currentWeights = {
-  defaults: 0.20,
-  profit_margins: 0.15,
-  capex: 0.15,
-  cash: 0.15,
-  buybacks: 0.125,
-  mna: 0.125,
-  dividends: 0.10
+  defaults:       0.22,
+  profit_margins: 0.17,
+  capex:          0.17,
+  cash:           0.14,
+  buybacks:       0.15,
+  mna:            0.15,
 };
 
-let selectedIndex = 0;
-let historyChart = null;
-let indicatorCharts = {};
+const K_SCALE = 1.05;   // must match backend
+const EWMA_A  = 0.45;   // must match backend
 
-// Invesco Phase Definitions
+let selectedIndex = 0;
+let historyChart  = null;
+
+// ── Invesco phase definitions ─────────────────────────────────────────────
 const PHASES = [
-  { name: 'Early cycle', min: 0.0, max: 1.0, color: '#0284c7', lightColor: 'rgba(2, 132, 199, 0.15)', text: 'Plateauing defaults, recovering margins, bottoming capex, liquidity build-up' },
-  { name: 'Mid-cycle', min: 1.0, max: 2.0, color: '#0d9488', lightColor: 'rgba(13, 148, 136, 0.15)', text: 'Declining defaults, expanding margins, steady capex, emerging M&A' },
-  { name: 'Late cycle', min: 2.0, max: 3.0, color: '#16a34a', lightColor: 'rgba(22, 163, 74, 0.15)', text: 'Bottom defaults, plateauing margins, accelerating capex, heavy buybacks, declining cash' },
-  { name: 'Recession', min: 3.0, max: 4.0, color: '#9333ea', lightColor: 'rgba(147, 51, 234, 0.15)', text: 'Rising defaults, contracting margins, slashed capex, frozen buybacks, liquidity scramble' }
+  { name: 'Early cycle', min: 0.0, max: 1.0,
+    color: '#0284c7', lightColor: 'rgba(2, 132, 199, 0.13)',
+    text: 'Plateauing defaults at elevated levels, recovering margins, capex bottoming and turning up, liquidity build-up' },
+  { name: 'Mid-cycle', min: 1.0, max: 2.0,
+    color: '#0d9488', lightColor: 'rgba(13, 148, 136, 0.13)',
+    text: 'Defaults trending lower, profit margins expanding, capex stabilising, M&A and buybacks growing' },
+  { name: 'Late cycle', min: 2.0, max: 3.0,
+    color: '#16a34a', lightColor: 'rgba(22, 163, 74, 0.13)',
+    text: 'Defaults at historical bottom, margins plateauing, capex accelerating, mega-deals & peak buybacks, cash declining' },
+  { name: 'Recession', min: 3.0, max: 4.0,
+    color: '#9333ea', lightColor: 'rgba(147, 51, 234, 0.13)',
+    text: 'Defaults rising sharply, margins contracting, capex slashed, buybacks frozen, forced liquidity rebuild' },
 ];
 
+// ── Math helpers ───────────────────────────────────────────────────────────
+function tanhJS(x) {
+  if (x > 20) return 1; if (x < -20) return -1;
+  const e = Math.exp(2 * x);
+  return (e - 1) / (e + 1);
+}
+
+function fbEWMA(arr, alpha) {
+  const n = arr.length;
+  const fwd = new Array(n);
+  fwd[0] = arr[0];
+  for (let i = 1; i < n; i++) fwd[i] = alpha * arr[i] + (1 - alpha) * fwd[i - 1];
+  const bwd = new Array(n);
+  bwd[n - 1] = fwd[n - 1];
+  for (let i = n - 2; i >= 0; i--) bwd[i] = alpha * fwd[i] + (1 - alpha) * bwd[i + 1];
+  return bwd;
+}
+
+function computeSmoothedScores(timeline, weights) {
+  const totalW = Object.values(weights).reduce((a, b) => a + b, 0);
+  const rawScores = timeline.map(rec => {
+    const ip = rec.indicator_pressures || {};
+    let p = 0;
+    for (const k in weights) p += (weights[k] / totalW) * (ip[k] ?? 0);
+    return Math.max(0, Math.min(4, 2.0 + 2.0 * tanhJS(K_SCALE * p)));
+  });
+  return fbEWMA(rawScores, EWMA_A).map(s => Math.max(0, Math.min(4, s)));
+}
+
+function getPhaseFromScore(s) {
+  if (s < 1.0) return PHASES[0];
+  if (s < 2.0) return PHASES[1];
+  if (s < 3.0) return PHASES[2];
+  return PHASES[3];
+}
+
+// ── Invesco hump curve ─────────────────────────────────────────────────────
+// x ∈ [0, 1] → normalised height ∈ [0, 1]
+// Tuned to match original Invesco diagram:
+//   x=0.0  (Early entry)   → low (≈0.18)
+//   x=0.13 (Early peak)    → rising (≈0.55)
+//   x=0.38 (Mid crest)     → max (≈1.00)
+//   x=0.62 (Late cycle)    → descending (≈0.70)
+//   x=0.80 (Late exit)     → steeper descent (≈0.35)
+//   x=1.0  (Recession end) → trough (≈0.08)
+function getCycleY(x) {
+  // Piece-wise asymmetric sinusoid matching Invesco shape
+  // Use a skewed sine: shifts peak toward x≈0.38 (Mid-cycle crest) and
+  // makes the recession descent steeper than the early-cycle rise.
+  const phase = x * 2 * Math.PI * 0.78 - 0.48;   // tuned offset + compression
+  return Math.max(0.04, 0.5 + 0.46 * Math.sin(phase));
+}
+
+function getCycleSlope(x) {
+  const dx = 0.004;
+  return (getCycleY(Math.min(1, x + dx)) - getCycleY(Math.max(0, x - dx))) / (2 * dx);
+}
+
+// ── Initialisation ─────────────────────────────────────────────────────────
 async function init() {
   try {
     const res = await fetch('credit_cycle_data.json');
     cycleData = await res.json();
-    selectedIndex = cycleData.timeline.length - 1; // Latest quarter
-    
+    // Load intelligent weights from JSON
+    const wp = cycleData.metadata?.weights_presets?.intelligent;
+    if (wp) {
+      // Only keep keys in currentWeights
+      for (const k in currentWeights) {
+        if (wp[k] !== undefined) currentWeights[k] = wp[k];
+      }
+    }
+    selectedIndex = cycleData.timeline.length - 1;
+
     setupWeightControls();
     updateDashboard();
     setupTimelineSlider();
     initHistoryChart();
     renderIndicatorCards();
-    
-    // Interactive canvas click to jump to corresponding historical cycle phase
+
+    // Click on the cycle curve canvas → jump to nearest historical quarter
     const canvas = document.getElementById('cycleCanvas');
     if (canvas) {
-      canvas.style.cursor = 'pointer';
+      canvas.style.cursor = 'crosshair';
       canvas.addEventListener('click', (e) => {
         const rect = canvas.getBoundingClientRect();
-        const clickX = e.clientX - rect.left;
-        const paddingLeft = 40;
-        const paddingRight = 40;
-        const plotW = rect.width - paddingLeft - paddingRight;
-        const ratio = Math.max(0.01, Math.min(0.99, (clickX - paddingLeft) / plotW));
-        const targetScore = ratio * 4.0;
-
-        // Find quarter in timeline closest to targetScore
-        let bestIdx = 0;
-        let minDiff = 999;
-        cycleData.timeline.forEach((q, idx) => {
-          const s = calculateCompositeScore(q, currentWeights);
-          const diff = Math.abs(s - targetScore);
-          if (diff < minDiff) {
-            minDiff = diff;
-            bestIdx = idx;
-          }
-        });
-        selectedIndex = bestIdx;
+        const padL = 44, padR = 44;
+        const plotW = rect.width - padL - padR;
+        const xRatio = Math.max(0.01, Math.min(0.99, (e.clientX - rect.left - padL) / plotW));
+        const targetS = xRatio * 4.0;
+        const scores = computeSmoothedScores(cycleData.timeline, currentWeights);
+        let best = 0, bestD = 999;
+        scores.forEach((s, i) => { const d = Math.abs(s - targetS); if (d < bestD) { bestD = d; best = i; } });
+        selectedIndex = best;
         updateDashboard();
       });
     }
 
-    window.addEventListener('resize', () => {
-      updateDashboard();
-    });
+    window.addEventListener('resize', () => updateDashboard());
   } catch (err) {
-    console.error("Error loading data:", err);
-    document.getElementById('app-loading').innerHTML = `
-      <div class="p-6 text-center text-red-400">
-        <p class="font-bold text-lg">Error loading credit cycle data</p>
-        <p class="text-sm mt-2">${err.message}</p>
-      </div>`;
+    console.error('Error loading data:', err);
+    const el = document.getElementById('app-loading');
+    if (el) el.innerHTML = `<div class="p-6 text-red-400 text-center">
+      <p class="font-bold">Failed to load credit_cycle_data.json</p>
+      <p class="text-sm mt-2">${err.message}</p></div>`;
   }
 }
 
-function getIndicatorScore(record, key) {
-  return record[key]?.phase_score ?? 1.5;
-}
+// ── Dashboard update ────────────────────────────────────────────────────────
+let _cachedScores = null;
+let _cachedWeightsSig = '';
 
-function calculateCompositeScore(record, weights) {
-  let totalW = 0;
-  let score = 0;
-  for (const k in weights) {
-    totalW += weights[k];
-    score += (record[k]?.phase_score ?? 1.5) * weights[k];
+function getCachedScores() {
+  const sig = JSON.stringify(currentWeights);
+  if (sig !== _cachedWeightsSig) {
+    _cachedScores = computeSmoothedScores(cycleData.timeline, currentWeights);
+    _cachedWeightsSig = sig;
   }
-  return totalW > 0 ? score / totalW : 2.0;
-}
-
-function getPhaseFromScore(score) {
-  if (score < 1.0) return PHASES[0];
-  if (score < 2.0) return PHASES[1];
-  if (score < 3.0) return PHASES[2];
-  return PHASES[3];
-}
-
-// Invesco Cycle Curve Function: y(x) where x in [0, 1]
-// Returns normalized height between 0 (trough) and 1 (peak)
-function getCycleCurveY(x) {
-  // x = 0 (Start of Early): 0.15
-  // x = 0.40 (Mid-Cycle Peak): 0.95
-  // x = 0.65 (Late Cycle Rollover): 0.70
-  // x = 0.90 (Recession Trough): 0.05
-  // Smooth composite curve simulating Invesco hump
-  return 0.5 + 0.45 * Math.sin((x * 2 * Math.PI) - (Math.PI / 2.5));
-}
-
-// Derivative / Slope at x
-function getCycleCurveSlope(x) {
-  const dx = 0.005;
-  const y1 = getCycleCurveY(Math.max(0, x - dx));
-  const y2 = getCycleCurveY(Math.min(1, x + dx));
-  return (y2 - y1) / (2 * dx);
+  return _cachedScores;
 }
 
 function updateDashboard() {
   if (!cycleData) return;
-  const currentRec = cycleData.timeline[selectedIndex];
-  const score = calculateCompositeScore(currentRec, currentWeights);
-  const phase = getPhaseFromScore(score);
+  const scores = getCachedScores();
+  const S = scores[selectedIndex];
+  const rec = cycleData.timeline[selectedIndex];
+  const phase = getPhaseFromScore(S);
+  const normX = Math.max(0.02, Math.min(0.98, S / 4.0));
+  const slope = getCycleSlope(normX);
 
-  // Normalized coordinate along the curve: 0.0 to 1.0
-  // Score is 0.0 to 4.0
-  const normalizedX = Math.max(0.02, Math.min(0.98, score / 4.0));
-  const slope = getCycleCurveSlope(normalizedX);
+  // Header badges
+  document.getElementById('current-quarter-badge').innerText = rec.quarter_label;
+  const phaseBadge = document.getElementById('current-phase-badge');
+  phaseBadge.innerText = phase.name.toUpperCase();
+  phaseBadge.style.backgroundColor = phase.color;
+  document.getElementById('composite-score-badge').innerText = `${S.toFixed(2)} / 4.0`;
 
-  // Update Header Badges
-  document.getElementById('current-quarter-badge').innerText = currentRec.quarter_label;
-  document.getElementById('current-phase-badge').innerText = phase.name.toUpperCase();
-  document.getElementById('current-phase-badge').style.backgroundColor = phase.color;
-  document.getElementById('composite-score-badge').innerText = `${score.toFixed(2)} / 4.0`;
-
-  let slopeText = "";
-  let slopeColor = "";
-  if (slope > 0.4) {
-    slopeText = "Ascending (Strong Expansion)";
-    slopeColor = "text-sky-400";
-  } else if (slope > 0.05) {
-    slopeText = "Maturing Peak (Approaching Crest)";
-    slopeColor = "text-teal-400";
-  } else if (slope > -0.35) {
-    slopeText = "Peak Plateau / Rollover Initiated";
-    slopeColor = "text-emerald-400";
-  } else {
-    slopeText = "Descending (Credit Contraction)";
-    slopeColor = "text-purple-400";
-  }
-  document.getElementById('current-slope-text').innerHTML = `<span class="${slopeColor} font-bold">${slopeText}</span> (Slope: ${slope.toFixed(2)})`;
+  // Slope text
+  let slopeText, slopeClass;
+  if (slope > 0.35)      { slopeText = 'Ascending — Expansion Strengthening'; slopeClass = 'text-sky-400'; }
+  else if (slope > 0.05) { slopeText = 'Maturing — Approaching Peak';          slopeClass = 'text-teal-400'; }
+  else if (slope > -0.30){ slopeText = 'Peak Plateau — Rollover Forming';       slopeClass = 'text-emerald-400'; }
+  else                   { slopeText = 'Descending — Credit Contraction';       slopeClass = 'text-purple-400'; }
+  document.getElementById('current-slope-text').innerHTML =
+    `<span class="${slopeClass} font-bold">${slopeText}</span> <span class="text-slate-400">(dY/dx = ${slope.toFixed(2)})</span>`;
   document.getElementById('phase-description-text').innerText = phase.text;
 
-  // Redraw Cycle Slope Canvas
-  drawCycleSlope(normalizedX, score, phase, slopeText);
+  drawCycleSlope(normX, S, phase, scores);
+  updateInvescoTable(rec, S);
 
-  // Update Reference Table Highlighting
-  updateInvescoTable(currentRec);
-
-  // Update Timeline Slider label
   const slider = document.getElementById('history-slider');
   if (slider) {
     slider.value = selectedIndex;
-    document.getElementById('slider-label').innerText = `${currentRec.quarter_label} (${selectedIndex + 1}/${cycleData.timeline.length})`;
+    document.getElementById('slider-label').innerText =
+      `${rec.quarter_label} (${selectedIndex + 1}/${cycleData.timeline.length})`;
   }
-
-  // Update Historical Chart line with new weights
-  updateHistoryChart();
+  updateHistoryChart(scores);
 }
 
-function drawCycleSlope(normalizedX, score, phase, slopeText) {
+// ── Main Cycle Slope Canvas ────────────────────────────────────────────────
+function drawCycleSlope(normX, score, phase, scores) {
   const canvas = document.getElementById('cycleCanvas');
   if (!canvas) return;
   const ctx = canvas.getContext('2d');
   const dpr = window.devicePixelRatio || 1;
-
   const rect = canvas.getBoundingClientRect();
-  canvas.width = rect.width * dpr;
+  canvas.width  = rect.width  * dpr;
   canvas.height = rect.height * dpr;
   ctx.scale(dpr, dpr);
 
-  const w = rect.width;
-  const h = rect.height;
+  const W = rect.width, H = rect.height;
+  const padL = 44, padR = 44, padT = 52, padB = 70;
+  const plotW = W - padL - padR, plotH = H - padT - padB;
 
-  ctx.clearRect(0, 0, w, h);
+  ctx.clearRect(0, 0, W, H);
 
-  const paddingLeft = 40;
-  const paddingRight = 40;
-  const paddingTop = 45;
-  const paddingBottom = 65;
-
-  const plotW = w - paddingLeft - paddingRight;
-  const plotH = h - paddingTop - paddingBottom;
-
-  // Background 4 Phase Zone Shading
-  const zoneWidth = plotW / 4;
+  // ── Phase zone shading (4 equal bands) ──
   PHASES.forEach((p, idx) => {
-    const zX = paddingLeft + idx * zoneWidth;
+    const zX = padL + idx * plotW / 4;
     ctx.fillStyle = p.lightColor;
-    ctx.fillRect(zX, paddingTop, zoneWidth, plotH);
-
-    // Subtle dashed separator
+    ctx.fillRect(zX, padT, plotW / 4, plotH);
+    // Phase divider
     if (idx > 0) {
-      ctx.beginPath();
-      ctx.setLineDash([4, 4]);
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
-      ctx.lineWidth = 1;
-      ctx.moveTo(zX, paddingTop);
-      ctx.lineTo(zX, paddingTop + plotH);
-      ctx.stroke();
+      ctx.beginPath(); ctx.setLineDash([4, 5]);
+      ctx.strokeStyle = 'rgba(255,255,255,0.12)'; ctx.lineWidth = 1;
+      ctx.moveTo(zX, padT); ctx.lineTo(zX, padT + plotH); ctx.stroke();
       ctx.setLineDash([]);
     }
-
-    // Phase Header Labels
+    // Phase zone header label
     ctx.fillStyle = p.color;
-    ctx.font = 'bold 13px system-ui, sans-serif';
+    ctx.font = 'bold 11.5px system-ui, sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText(p.name.toUpperCase(), zX + zoneWidth / 2, paddingTop - 12);
+    ctx.fillText(p.name.toUpperCase(), zX + plotW / 8, padT - 14);
   });
 
-  // Draw the Invesco Credit Curve
-  const points = [];
-  const steps = 120;
-  for (let i = 0; i <= steps; i++) {
-    const xRatio = i / steps;
-    const px = paddingLeft + xRatio * plotW;
-    const pyNorm = getCycleCurveY(xRatio);
-    // Invert pyNorm so 1 is near top, 0 near bottom
-    const py = paddingTop + (1 - pyNorm) * (plotH - 20) + 10;
-    points.push({ x: px, y: py, ratio: xRatio });
+  // ── Build curve points ──
+  const STEPS = 200;
+  const pts = [];
+  for (let i = 0; i <= STEPS; i++) {
+    const xR  = i / STEPS;
+    const px  = padL + xR * plotW;
+    const pyN = getCycleY(xR);
+    const py  = padT + (1 - pyN) * (plotH - 16) + 8;
+    pts.push({ x: px, y: py, r: xR });
   }
 
-  // Draw Glowing Curve
+  // ── Draw curve shadow (glow) ──
   ctx.beginPath();
-  ctx.moveTo(points[0].x, points[0].y);
-  for (let i = 1; i < points.length; i++) {
-    ctx.lineTo(points[i].x, points[i].y);
-  }
+  ctx.moveTo(pts[0].x, pts[0].y);
+  pts.forEach(p => ctx.lineTo(p.x, p.y));
+  ctx.strokeStyle = 'rgba(100, 200, 255, 0.12)';
+  ctx.lineWidth = 12;
+  ctx.lineJoin = 'round';
+  ctx.stroke();
 
-  // Gradient stroke for curve matching phases
-  const grad = ctx.createLinearGradient(paddingLeft, 0, paddingLeft + plotW, 0);
-  grad.addColorStop(0.12, PHASES[0].color);
-  grad.addColorStop(0.38, PHASES[1].color);
-  grad.addColorStop(0.65, PHASES[2].color);
-  grad.addColorStop(0.90, PHASES[3].color);
+  // ── Draw main coloured curve ──
+  const grad = ctx.createLinearGradient(padL, 0, padL + plotW, 0);
+  grad.addColorStop(0.00, PHASES[0].color);
+  grad.addColorStop(0.25, PHASES[1].color);
+  grad.addColorStop(0.55, PHASES[2].color);
+  grad.addColorStop(0.85, PHASES[3].color);
+  grad.addColorStop(1.00, PHASES[3].color);
 
+  ctx.beginPath();
+  ctx.moveTo(pts[0].x, pts[0].y);
+  pts.forEach(p => ctx.lineTo(p.x, p.y));
   ctx.strokeStyle = grad;
-  ctx.lineWidth = 4.5;
-  ctx.shadowColor = 'rgba(56, 189, 248, 0.4)';
-  ctx.shadowBlur = 10;
+  ctx.lineWidth = 4.5; ctx.lineJoin = 'round';
+  ctx.shadowColor = 'rgba(60, 180, 255, 0.35)'; ctx.shadowBlur = 10;
   ctx.stroke();
   ctx.shadowBlur = 0;
 
-  // --- Draw Invesco Structural Reference Lines (from source image) ---
+  // ── Invesco structural reference lines ──
+  // Match exact positions in original Invesco diagram:
+  //   Early cycle label  ≈ 18% along x-axis (ascending slope)
+  //   Mid-cycle label    ≈ 46% (near crest)
+  //   Late cycle label   ≈ 68% (descending slope)
+  //   Recession label    ≈ 90% (deep trough region)
   const refLines = [
-    { xRatio: 0.22, label: 'Early cycle', color: '#38bdf8', tilt: -0.38 },
-    { xRatio: 0.46, label: 'Mid-cycle', color: '#2dd4bf', tilt: 0 },
-    { xRatio: 0.70, label: 'Late cycle', color: '#4ade80', tilt: 0.38 }
+    { xR: 0.18, label: 'Early cycle', color: PHASES[0].color, tilt: -0.42 },
+    { xR: 0.46, label: 'Mid-cycle',   color: PHASES[1].color, tilt:  0.0  },
+    { xR: 0.68, label: 'Late cycle',  color: PHASES[2].color, tilt:  0.36 },
   ];
-
   refLines.forEach(ref => {
-    const rx = paddingLeft + ref.xRatio * plotW;
-    const rCurveYNorm = getCycleCurveY(ref.xRatio);
-    const ry = paddingTop + (1 - rCurveYNorm) * (plotH - 20) + 10;
-
-    // Structural vertical pointer line
+    const rx = padL + ref.xR * plotW;
+    const ryN = getCycleY(ref.xR);
+    const ry  = padT + (1 - ryN) * (plotH - 16) + 8;
+    // Drop line from curve to base
     ctx.beginPath();
-    ctx.strokeStyle = ref.color;
-    ctx.lineWidth = 1.8;
-    ctx.moveTo(rx, ry);
-    ctx.lineTo(rx, paddingTop + plotH);
+    ctx.strokeStyle = ref.color + 'cc';
+    ctx.lineWidth = 1.5; ctx.setLineDash([]);
+    ctx.moveTo(rx, ry); ctx.lineTo(rx, padT + plotH);
     ctx.stroke();
-
-    // Top dot on reference line
-    ctx.beginPath();
-    ctx.arc(rx, ry, 4, 0, Math.PI * 2);
+    // Curve dot
+    ctx.beginPath(); ctx.arc(rx, ry, 4, 0, Math.PI * 2);
+    ctx.fillStyle = ref.color; ctx.fill();
+    // Tilted label on the curve
+    ctx.save();
+    ctx.translate(rx, ry);
+    ctx.rotate(ref.tilt);
     ctx.fillStyle = ref.color;
-    ctx.fill();
+    ctx.font = 'bold 12px system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(ref.label, -8, -14);
+    ctx.restore();
   });
 
-  // Structural Labels along the Curve (matching original diagram)
+  // "Recession" label at trough (no line, just text)
   ctx.save();
-  // Early cycle label (tilted on ascending slope)
-  ctx.translate(paddingLeft + 0.16 * plotW, paddingTop + 0.58 * plotH);
-  ctx.rotate(-0.35);
-  ctx.fillStyle = '#7dd3fc';
-  ctx.font = 'bold 13px system-ui, sans-serif';
+  ctx.fillStyle = PHASES[3].color;
+  ctx.font = 'bold 12px system-ui, sans-serif';
   ctx.textAlign = 'center';
-  ctx.fillText('Early cycle', 0, -10);
+  const recX = padL + 0.9 * plotW;
+  const recYN = getCycleY(0.9);
+  const recY  = padT + (1 - recYN) * (plotH - 16) + 8;
+  ctx.fillText('Recession', recX, recY - 16);
   ctx.restore();
 
-  // Mid-cycle label (centered above peak crest)
-  ctx.save();
-  ctx.fillStyle = '#5eead4';
-  ctx.font = 'bold 14px system-ui, sans-serif';
-  ctx.textAlign = 'center';
-  ctx.fillText('Mid-cycle', paddingLeft + 0.46 * plotW, paddingTop + 16);
-  ctx.restore();
-
-  // Late cycle label (tilted on descending slope)
-  ctx.save();
-  ctx.translate(paddingLeft + 0.70 * plotW, paddingTop + 0.48 * plotH);
-  ctx.rotate(0.35);
-  ctx.fillStyle = '#86efac';
-  ctx.font = 'bold 13px system-ui, sans-serif';
-  ctx.textAlign = 'center';
-  ctx.fillText('Late cycle', 0, -10);
-  ctx.restore();
-
-  // Recession label (trough)
-  ctx.save();
-  ctx.fillStyle = '#d8b4fe';
-  ctx.font = 'bold 13px system-ui, sans-serif';
-  ctx.textAlign = 'center';
-  ctx.fillText('Recession', paddingLeft + 0.88 * plotW, paddingTop + 0.88 * plotH);
-  ctx.restore();
-
-  // Source image annotation top right
-  ctx.fillStyle = '#94a3b8';
-  ctx.font = 'italic 11px system-ui, sans-serif';
+  // Top-right annotation (matching Invesco source)
+  ctx.fillStyle = '#64748b';
+  ctx.font = 'italic 10px system-ui, sans-serif';
   ctx.textAlign = 'right';
-  ctx.fillText('valuations are high, and megadeals become prevalent', paddingLeft + plotW - 10, paddingTop - 22);
+  ctx.fillText('valuations are high, and megadeals become prevalent', padL + plotW - 8, padT - 30);
 
-  // --- DYNAMIC LIVE "WE ARE HERE" VERTICAL PIN & MARKER ---
-  const currentPinX = paddingLeft + normalizedX * plotW;
-  const currentCurveYNorm = getCycleCurveY(normalizedX);
-  const currentPinY = paddingTop + (1 - currentCurveYNorm) * (plotH - 20) + 10;
+  // ── Current position pin ──
+  const pinX  = padL + normX * plotW;
+  const pinYN = getCycleY(normX);
+  const pinY  = padT + (1 - pinYN) * (plotH - 16) + 8;
 
-  // 1. Prominent vertical dropline for Current Position
+  // Drop line (white dashed)
+  ctx.beginPath(); ctx.setLineDash([5, 4]);
+  ctx.strokeStyle = '#ffffffbb'; ctx.lineWidth = 2.5;
+  ctx.shadowColor = phase.color; ctx.shadowBlur = 8;
+  ctx.moveTo(pinX, pinY); ctx.lineTo(pinX, padT + plotH);
+  ctx.stroke(); ctx.setLineDash([]); ctx.shadowBlur = 0;
+
+  // Vertical pole
   ctx.beginPath();
-  ctx.setLineDash([6, 3]);
-  ctx.strokeStyle = '#ffffff';
-  ctx.lineWidth = 2.5;
-  ctx.shadowColor = phase.color;
-  ctx.shadowBlur = 10;
-  ctx.moveTo(currentPinX, currentPinY);
-  ctx.lineTo(currentPinX, paddingTop + plotH);
-  ctx.stroke();
-  ctx.shadowBlur = 0;
-  ctx.setLineDash([]);
-
-  // 2. Vertical Pin Pole extending above curve
-  ctx.beginPath();
-  ctx.strokeStyle = '#f8fafc';
-  ctx.lineWidth = 2.5;
-  ctx.moveTo(currentPinX, currentPinY);
-  ctx.lineTo(currentPinX, currentPinY - 36);
+  ctx.strokeStyle = '#f8fafc'; ctx.lineWidth = 2.5;
+  ctx.moveTo(pinX, pinY); ctx.lineTo(pinX, pinY - 38);
   ctx.stroke();
 
-  // 3. Top Flag Callout: "YOU ARE HERE"
-  const tagW = 106;
-  const tagH = 22;
-  const tagX = Math.max(paddingLeft, Math.min(paddingLeft + plotW - tagW, currentPinX - tagW / 2));
-  const tagY = currentPinY - 48;
-
+  // Flag tag "WE ARE HERE"
+  const tagW = 114, tagH = 23;
+  const tagX = Math.max(padL + 4, Math.min(padL + plotW - tagW - 4, pinX - tagW / 2));
+  const tagY = pinY - 62;
   ctx.fillStyle = phase.color;
-  ctx.shadowColor = 'rgba(0, 0, 0, 0.7)';
-  ctx.shadowBlur = 8;
-  roundRect(ctx, tagX, tagY, tagW, tagH, 5, true, false);
+  ctx.shadowColor = 'rgba(0,0,0,0.8)'; ctx.shadowBlur = 8;
+  _roundRect(ctx, tagX, tagY, tagW, tagH, 5); ctx.fill();
   ctx.shadowBlur = 0;
-
   ctx.fillStyle = '#ffffff';
-  ctx.font = '900 10px system-ui, sans-serif';
+  ctx.font = '800 10px system-ui, sans-serif';
   ctx.textAlign = 'center';
-  ctx.fillText('WE ARE HERE NOW', tagX + tagW / 2, tagY + 14);
+  ctx.fillText('▼  WE ARE HERE NOW', tagX + tagW / 2, tagY + 15);
 
-  // 4. Glowing Pulsing Coordinate Pin on the Curve
-  ctx.beginPath();
-  ctx.arc(currentPinX, currentPinY, 12, 0, Math.PI * 2);
-  ctx.fillStyle = phase.color;
-  ctx.globalAlpha = 0.35;
-  ctx.fill();
-  ctx.globalAlpha = 1.0;
+  // Outer glow ring
+  ctx.beginPath(); ctx.arc(pinX, pinY, 13, 0, Math.PI * 2);
+  ctx.fillStyle = phase.color + '44'; ctx.fill();
 
-  ctx.beginPath();
-  ctx.arc(currentPinX, currentPinY, 7, 0, Math.PI * 2);
-  ctx.fillStyle = '#ffffff';
-  ctx.fill();
-  ctx.strokeStyle = phase.color;
-  ctx.lineWidth = 3.5;
-  ctx.shadowColor = phase.color;
-  ctx.shadowBlur = 16;
-  ctx.stroke();
-  ctx.shadowBlur = 0;
+  // Inner white dot
+  ctx.beginPath(); ctx.arc(pinX, pinY, 7, 0, Math.PI * 2);
+  ctx.fillStyle = '#ffffff'; ctx.fill();
+  ctx.strokeStyle = phase.color; ctx.lineWidth = 3.5;
+  ctx.shadowColor = phase.color; ctx.shadowBlur = 16;
+  ctx.stroke(); ctx.shadowBlur = 0;
 
-  // 5. Baseline Indicator Box with exact coordinate
-  const baseBoxW = 175;
-  const baseBoxH = 28;
-  const baseBoxX = Math.max(paddingLeft, Math.min(paddingLeft + plotW - baseBoxW, currentPinX - baseBoxW / 2));
-  const baseBoxY = paddingTop + plotH + 8;
-
-  ctx.fillStyle = 'rgba(15, 23, 42, 0.95)';
-  ctx.strokeStyle = phase.color;
-  ctx.lineWidth = 2;
-  roundRect(ctx, baseBoxX, baseBoxY, baseBoxW, baseBoxH, 6, true, true);
-
+  // Bottom status box
+  const boxW = 195, boxH = 28;
+  const boxX = Math.max(padL, Math.min(padL + plotW - boxW, pinX - boxW / 2));
+  const boxY = padT + plotH + 8;
+  ctx.fillStyle = 'rgba(10, 16, 28, 0.95)';
+  ctx.strokeStyle = phase.color; ctx.lineWidth = 2;
+  _roundRect(ctx, boxX, boxY, boxW, boxH, 6); ctx.fill(); ctx.stroke();
   ctx.fillStyle = '#f8fafc';
   ctx.font = 'bold 11px system-ui, sans-serif';
   ctx.textAlign = 'center';
-  ctx.fillText(`POSITION: ${(normalizedX * 100).toFixed(0)}% • ${phase.name.toUpperCase()}`, baseBoxX + baseBoxW / 2, baseBoxY + 18);
+  ctx.fillText(
+    `POSITION ${(normX * 100).toFixed(0)}% — ${phase.name.toUpperCase()}  (${score.toFixed(2)}/4)`,
+    boxX + boxW / 2, boxY + 18
+  );
 }
 
-function roundRect(ctx, x, y, width, height, radius, fill, stroke) {
+function _roundRect(ctx, x, y, w, h, r) {
   ctx.beginPath();
-  ctx.moveTo(x + radius, y);
-  ctx.lineTo(x + width - radius, y);
-  ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
-  ctx.lineTo(x + width, y + height - radius);
-  ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
-  ctx.lineTo(x + radius, y + height);
-  ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
-  ctx.lineTo(x, y + radius);
-  ctx.quadraticCurveTo(x, y, x + radius, y);
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y); ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+  ctx.lineTo(x + w, y + h - r); ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  ctx.lineTo(x + r, y + h); ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+  ctx.lineTo(x, y + r); ctx.quadraticCurveTo(x, y, x + r, y);
   ctx.closePath();
-  if (fill) ctx.fill();
-  if (stroke) ctx.stroke();
 }
 
-function updateInvescoTable(rec) {
-  if (!cycleData?.invesco_matrix) return;
+// ── Invesco Reference Table ─────────────────────────────────────────────────
+function updateInvescoTable(rec, score) {
   const tbody = document.getElementById('invesco-table-body');
-  if (!tbody) return;
-
+  if (!tbody || !cycleData?.invesco_matrix) return;
   tbody.innerHTML = '';
 
-  const phaseMap = {
-    'Early cycle': 0,
-    'Mid-cycle': 1,
-    'Late cycle': 2,
-    'Recession': 3
-  };
-
   cycleData.invesco_matrix.forEach(row => {
-    const indicatorKey = row.id;
-    const indData = rec[indicatorKey];
-    const activeState = indData?.phase || '';
-    const val = indData?.value;
-    const unit = indData?.unit || '';
-    const chg = indData?.chg_1y !== undefined ? indData.chg_1y : (indData?.yoy !== undefined ? indData.yoy : null);
+    const id  = row.id;
+    const ind = rec[id] || {};
+    const activeState = ind.phase || '';
+    const val   = ind.value;
+    const unit  = ind.unit  || '';
+    const chgKey = ind.chg_1y !== undefined ? 'chg_1y' : 'yoy';
+    const chg  = ind[chgKey];
 
     const tr = document.createElement('tr');
-    tr.className = "border-b border-slate-800 hover:bg-slate-800/40 transition-colors";
+    tr.className = 'border-b border-slate-800/80 hover:bg-slate-800/30 transition-colors';
 
-    // Indicator Column
-    let indicatorHtml = `
-      <td class="py-3 px-4 font-semibold text-slate-200">
-        <div class="flex items-center gap-2">
-          <span>${row.name}</span>
-          ${row.name === 'CAPEX' ? '<span class="text-xs px-1.5 py-0.5 rounded bg-red-950 text-red-300 font-bold border border-red-700">CAPEX</span>' : ''}
-        </div>
-        <div class="text-xs text-slate-400 font-mono mt-0.5">
-          ${val !== undefined ? `${val} ${unit}` : ''}
-          ${chg !== null ? `<span class="${chg >= 0 ? 'text-emerald-400' : 'text-rose-400'} ml-1.5 font-sans font-medium">(${chg > 0 ? '+' : ''}${chg}${unit === '%' || unit.includes('%') ? 'pp' : '%'} 1y)</span>` : ''}
-        </div>
-      </td>`;
+    const matchPhase = (cell) => {
+      const cellL = cell.toLowerCase().replace(/[^a-z0-9]/g,'');
+      const stateL = activeState.toLowerCase().replace(/[^a-z0-9]/g,'');
+      return stateL.includes(cellL.substring(0, 8)) || cellL.includes(stateL.substring(0, 8));
+    };
 
-    // 4 Phase Columns
-    const cols = [
-      { text: row.early, phaseName: 'Early cycle', isMatch: activeState.toLowerCase().includes(row.early.toLowerCase()) || row.early.toLowerCase().includes(activeState.toLowerCase()) },
-      { text: row.mid, phaseName: 'Mid-cycle', isMatch: activeState.toLowerCase().includes(row.mid.toLowerCase()) || row.mid.toLowerCase().includes(activeState.toLowerCase()) },
-      { text: row.late, phaseName: 'Late cycle', isMatch: activeState.toLowerCase().includes(row.late.toLowerCase()) || row.late.toLowerCase().includes(activeState.toLowerCase()) },
-      { text: row.recession, phaseName: 'Recession', isMatch: activeState.toLowerCase().includes(row.recession.toLowerCase()) || row.recession.toLowerCase().includes(activeState.toLowerCase()) }
-    ];
+    const phaseColMatch = [row.early, row.mid, row.late, row.recession].map(c => matchPhase(c));
+    // Fallback: use score bands if text match fails
+    const activePhaseBand = score < 1 ? 0 : score < 2 ? 1 : score < 3 ? 2 : 3;
+    const activeIdx = phaseColMatch.some(m => m) ? phaseColMatch.indexOf(true) : activePhaseBand;
 
-    cols.forEach(col => {
-      const activeClass = col.isMatch ? 'table-cell-active text-emerald-300' : 'text-slate-300';
-      indicatorHtml += `
-        <td class="py-3 px-4 text-sm ${activeClass} transition-all duration-200">
-          <div>${col.text}</div>
-          ${col.isMatch ? `<div class="text-[11px] text-emerald-200/90 font-mono mt-0.5 font-semibold">Value: ${val} ${unit}</div>` : ''}
+    let chgHtml = '';
+    if (chg !== undefined && chg !== null) {
+      const isPos = chg >= 0;
+      const suffix = id === 'defaults' || id === 'cash' ? 'pp' : '%';
+      chgHtml = `<span class="text-[10px] ${isPos ? 'text-emerald-400' : 'text-rose-400'} font-semibold ml-1">${isPos ? '+' : ''}${chg}${suffix} 1y</span>`;
+    }
+
+    let indHtml = `<td class="py-3 px-4">
+      <div class="font-semibold text-slate-100 text-[13px]">${row.name}</div>
+      <div class="text-[11px] text-slate-400 font-mono mt-0.5">
+        ${val !== undefined ? `<span class="text-slate-200">${val}</span> ${unit}` : ''}
+        ${chgHtml}
+      </div>
+    </td>`;
+
+    const phaseColor = PHASES[activePhaseBand].color;
+    const phaseCols  = [row.early, row.mid, row.late, row.recession];
+    phaseCols.forEach((cell, ci) => {
+      const isActive = ci === activeIdx;
+      if (isActive) {
+        indHtml += `<td class="py-3 px-4 text-[12px] relative border-l border-slate-800"
+          style="background:${PHASES[ci].color}22; border: 1.5px solid ${PHASES[ci].color}77; color:#fff; font-weight:700; box-shadow: inset 0 0 12px ${PHASES[ci].color}44;">
+          <div>${cell}</div>
+          <div class="text-[9px] font-mono mt-0.5 opacity-80">${val !== undefined ? `${val} ${unit}` : ''}</div>
+          <span style="position:absolute;top:3px;right:5px;font-size:8px;background:${PHASES[ci].color};color:#000;font-weight:900;padding:1px 4px;border-radius:3px;">ACTIVE</span>
         </td>`;
+      } else {
+        indHtml += `<td class="py-3 px-4 text-[12px] text-slate-400 border-l border-slate-800/60">
+          <div>${cell}</div>
+        </td>`;
+      }
     });
 
-    tr.innerHTML = indicatorHtml;
+    tr.innerHTML = indHtml;
     tbody.appendChild(tr);
   });
 }
 
+// ── Weight Sliders ─────────────────────────────────────────────────────────
 function setupWeightControls() {
   const container = document.getElementById('weight-sliders');
   if (!container) return;
   container.innerHTML = '';
 
   const labels = {
-    defaults: { label: 'Defaults & Credit Stress', desc: 'FRED: DRBLACBS' },
-    profit_margins: { label: 'Corporate Profit Margins', desc: 'FRED: CP / GDP' },
-    capex: { label: 'CAPEX (Capital Expenditure)', desc: 'FRED: PNFI' },
-    cash: { label: 'Corporate Cash / Liquidity', desc: 'FRED: Liquid Assets / ST Liab' },
-    buybacks: { label: 'Share Buybacks & Equity Retirements', desc: 'FRED: NCBCEBQ027S' },
-    mna: { label: 'M&A & Deal Frenzy', desc: 'FRED: IEAADIN' },
-    dividends: { label: 'Dividends & Payout Ratios', desc: 'FRED: DIVIDEND / CP' }
+    defaults:       { label: 'Defaults & Credit Stress',        desc: 'FRED: DRBLACBS — C&I Loan Delinquency Rate' },
+    profit_margins: { label: 'Corporate Profit Margins',         desc: 'FRED: CP / GDP — After-Tax Corporate Profits' },
+    capex:          { label: 'CAPEX (Capital Investment)',       desc: 'FRED: PNFI — Private Nonresidential Fixed Investment' },
+    cash:           { label: 'Corporate Cash / Liquidity',       desc: 'FRED: BOGZ1FL104001006Q — Liquid Assets / ST Liabilities' },
+    buybacks:       { label: 'Share Buybacks & Repurchases',     desc: 'FRED: NCBCEBQ027S — NFC Equity Retirement Transactions' },
+    mna:            { label: 'M&A Activity (Deal Volume)',       desc: 'FRED: IEAADIN — US Direct Investment Equity Acquisitions' },
   };
 
   for (const key in currentWeights) {
-    const info = labels[key];
+    const info = labels[key] || { label: key, desc: '' };
     const valPct = Math.round(currentWeights[key] * 100);
-
     const div = document.createElement('div');
-    div.className = "bg-slate-900/60 p-3 rounded-xl border border-slate-800/80";
+    div.className = 'bg-slate-900/60 p-3 rounded-xl border border-slate-800/80';
     div.innerHTML = `
-      <div class="flex justify-between items-center mb-1">
+      <div class="flex justify-between items-start mb-1.5">
         <div>
-          <span class="text-xs font-semibold text-slate-200">${info.label}</span>
-          <span class="text-[10px] text-slate-500 block">${info.desc}</span>
+          <span class="text-[12px] font-semibold text-slate-200">${info.label}</span>
+          <span class="text-[10px] text-slate-500 block mt-0.5">${info.desc}</span>
         </div>
-        <span id="weight-val-${key}" class="text-xs font-mono font-bold text-sky-400 bg-sky-950/60 px-2 py-0.5 rounded border border-sky-800/50">${valPct}%</span>
+        <span id="wv-${key}" class="text-[11px] font-mono font-bold text-sky-400 bg-sky-950/70 px-2 py-0.5 rounded border border-sky-800/50 whitespace-nowrap">${valPct}%</span>
       </div>
-      <input type="range" id="slider-weight-${key}" min="0" max="40" step="1" value="${valPct}" class="w-full">
+      <input type="range" id="ws-${key}" min="0" max="40" step="1" value="${valPct}" class="w-full">
     `;
     container.appendChild(div);
-
-    const input = div.querySelector(`#slider-weight-${key}`);
-    input.addEventListener('input', (e) => {
-      const newPct = parseFloat(e.target.value);
-      currentWeights[key] = newPct / 100.0;
-      document.getElementById(`weight-val-${key}`).innerText = `${newPct}%`;
-      normalizeWeights(key);
+    div.querySelector(`#ws-${key}`).addEventListener('input', e => {
+      currentWeights[key] = parseFloat(e.target.value) / 100;
+      document.getElementById(`wv-${key}`).innerText = `${e.target.value}%`;
+      _cachedWeightsSig = '';
       updateDashboard();
     });
   }
 
-  // Preset Buttons
   document.getElementById('btn-preset-intel')?.addEventListener('click', () => {
-    currentWeights = { ...cycleData.metadata.weights_presets.intelligent };
-    syncSliderInputs();
-    updateDashboard();
+    const wp = cycleData?.metadata?.weights_presets?.intelligent || {};
+    for (const k in currentWeights) if (wp[k] !== undefined) currentWeights[k] = wp[k];
+    syncSliders(); _cachedWeightsSig = ''; updateDashboard();
   });
-
   document.getElementById('btn-preset-equal')?.addEventListener('click', () => {
-    const eq = 1.0 / 7.0;
+    const eq = 1 / Object.keys(currentWeights).length;
     for (const k in currentWeights) currentWeights[k] = eq;
-    syncSliderInputs();
-    updateDashboard();
+    syncSliders(); _cachedWeightsSig = ''; updateDashboard();
   });
 }
 
-function normalizeWeights(excludeKey) {
-  let sum = 0;
-  for (const k in currentWeights) sum += currentWeights[k];
-  if (sum <= 0) {
-    currentWeights[excludeKey] = 1.0;
-    sum = 1.0;
+function syncSliders() {
+  for (const k in currentWeights) {
+    const pct = Math.round(currentWeights[k] * 100);
+    const s = document.getElementById(`ws-${k}`); if (s) s.value = pct;
+    const v = document.getElementById(`wv-${k}`); if (v) v.innerText = `${pct}%`;
   }
 }
 
-function syncSliderInputs() {
-  for (const key in currentWeights) {
-    const valPct = Math.round(currentWeights[key] * 100);
-    const slider = document.getElementById(`slider-weight-${key}`);
-    const label = document.getElementById(`weight-val-${key}`);
-    if (slider) slider.value = valPct;
-    if (label) label.innerText = `${valPct}%`;
-  }
-}
-
+// ── Timeline Slider ────────────────────────────────────────────────────────
 function setupTimelineSlider() {
   const slider = document.getElementById('history-slider');
   if (!slider) return;
   slider.max = cycleData.timeline.length - 1;
   slider.value = selectedIndex;
-
-  slider.addEventListener('input', (e) => {
+  slider.addEventListener('input', e => {
     selectedIndex = parseInt(e.target.value);
     updateDashboard();
   });
 }
 
+// ── Historical Chart ───────────────────────────────────────────────────────
 function initHistoryChart() {
   const ctx = document.getElementById('historyChart')?.getContext('2d');
   if (!ctx) return;
-
-  const labels = cycleData.timeline.map(r => r.quarter_label);
-  const dataScores = cycleData.timeline.map(r => calculateCompositeScore(r, currentWeights));
+  const scores  = getCachedScores();
+  const labels  = cycleData.timeline.map(r => r.quarter_label);
 
   historyChart = new Chart(ctx, {
     type: 'line',
     data: {
-      labels: labels,
-      datasets: [
-        {
-          label: 'Credit Cycle Composite Score',
-          data: dataScores,
-          borderColor: '#38bdf8',
-          borderWidth: 3,
-          pointRadius: 0,
-          pointHoverRadius: 6,
-          pointHoverBackgroundColor: '#ffffff',
-          pointHoverBorderColor: '#38bdf8',
-          fill: true,
-          backgroundColor: (context) => {
-            const chart = context.chart;
-            const { ctx, chartArea } = chart;
-            if (!chartArea) return null;
-            const gradient = ctx.createLinearGradient(0, chartArea.top, 0, chartArea.bottom);
-            gradient.addColorStop(0, 'rgba(56, 189, 248, 0.25)');
-            gradient.addColorStop(1, 'rgba(56, 189, 248, 0.0)');
-            return gradient;
-          },
-          tension: 0.35
-        }
-      ]
+      labels,
+      datasets: [{
+        label: 'Credit Cycle Score',
+        data: scores,
+        borderColor: '#38bdf8',
+        borderWidth: 2.5,
+        pointRadius: 0,
+        pointHoverRadius: 7,
+        pointHoverBackgroundColor: '#ffffff',
+        pointHoverBorderColor: '#38bdf8',
+        fill: true,
+        backgroundColor: (ctx) => {
+          const { chart: ch, chartArea: ca } = ctx;
+          if (!ca) return null;
+          const g = ch.ctx.createLinearGradient(0, ca.top, 0, ca.bottom);
+          g.addColorStop(0,   'rgba(56, 189, 248, 0.28)');
+          g.addColorStop(1,   'rgba(56, 189, 248, 0.00)');
+          return g;
+        },
+        tension: 0.4,
+      }]
     },
     options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      interaction: {
-        mode: 'index',
-        intersect: false
-      },
+      responsive: true, maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
       plugins: {
         legend: { display: false },
         tooltip: {
-          backgroundColor: '#0f172a',
-          titleColor: '#f8fafc',
-          bodyColor: '#cbd5e1',
-          borderColor: '#334155',
-          borderWidth: 1,
-          padding: 12,
+          backgroundColor: '#0f172a', titleColor: '#f8fafc',
+          bodyColor: '#cbd5e1', borderColor: '#334155', borderWidth: 1, padding: 12,
           callbacks: {
-            label: (item) => {
-              const score = item.parsed.y;
-              const phase = getPhaseFromScore(score);
-              return [`Cycle Score: ${score.toFixed(2)} / 4.0`, `Phase: ${phase.name}`];
+            label: item => {
+              const s = item.parsed.y;
+              const ph = getPhaseFromScore(s);
+              return [`Score: ${s.toFixed(2)} / 4.0`, `Phase: ${ph.name}`];
             }
+          }
+        },
+        annotation: {
+          annotations: {
+            early: { type: 'box', yMin: 0, yMax: 1, backgroundColor: 'rgba(2,132,199,0.05)', borderWidth: 0 },
+            mid:   { type: 'box', yMin: 1, yMax: 2, backgroundColor: 'rgba(13,148,136,0.05)', borderWidth: 0 },
+            late:  { type: 'box', yMin: 2, yMax: 3, backgroundColor: 'rgba(22,163,74,0.05)',  borderWidth: 0 },
+            rec:   { type: 'box', yMin: 3, yMax: 4, backgroundColor: 'rgba(147,51,234,0.05)', borderWidth: 0 },
           }
         }
       },
       scales: {
         x: {
-          grid: { color: 'rgba(255, 255, 255, 0.05)' },
-          ticks: {
-            color: '#64748b',
-            maxTicksLimit: 12,
-            font: { size: 11 }
-          }
+          grid: { color: 'rgba(255,255,255,0.05)' },
+          ticks: { color: '#64748b', maxTicksLimit: 14, font: { size: 10 } }
         },
         y: {
-          min: 0,
-          max: 4,
-          grid: { color: 'rgba(255, 255, 255, 0.06)' },
+          min: 0, max: 4,
+          grid: { color: 'rgba(255,255,255,0.06)' },
           ticks: {
-            color: '#64748b',
-            stepSize: 1,
-            callback: (val) => {
-              if (val === 0.5) return 'Early (0-1)';
-              if (val === 1.5) return 'Mid (1-2)';
-              if (val === 2.5) return 'Late (2-3)';
-              if (val === 3.5) return 'Recession (3-4)';
-              return val;
-            }
+            color: '#64748b', stepSize: 1,
+            callback: v => ['Early Cycle', 'Mid-Cycle', 'Late Cycle', 'Recession', ''][v] ?? ''
           }
         }
       },
       onClick: (e, elements) => {
-        if (elements.length > 0) {
-          selectedIndex = elements[0].index;
-          updateDashboard();
-        }
+        if (elements.length > 0) { selectedIndex = elements[0].index; updateDashboard(); }
       }
     }
   });
 }
 
-function updateHistoryChart() {
+function updateHistoryChart(scores) {
   if (!historyChart) return;
-  const newScores = cycleData.timeline.map(r => calculateCompositeScore(r, currentWeights));
-  historyChart.data.datasets[0].data = newScores;
-  historyChart.update();
+  historyChart.data.datasets[0].data = scores || getCachedScores();
+  historyChart.update('none');
 }
 
+// ── Indicator Cards ────────────────────────────────────────────────────────
 function renderIndicatorCards() {
   const container = document.getElementById('indicator-cards-container');
   if (!container) return;
   container.innerHTML = '';
 
-  const cards = [
-    { key: 'defaults', name: 'Defaults & Delinquencies', series: 'DRBLACBS', desc: 'Commercial Bank C&I Loan Delinquency Rate (%)', color: '#ef4444' },
-    { key: 'profit_margins', name: 'Corporate Profit Margins', series: 'CP / GDP', desc: 'Corporate Profits After Tax / GDP (%)', color: '#10b981' },
-    { key: 'capex', name: 'CAPEX (Investment)', series: 'PNFI', desc: 'Private Nonresidential Fixed Investment ($B)', color: '#f59e0b' },
-    { key: 'cash', name: 'Corporate Cash / Liquidity', series: 'BOGZ1FL104001006Q', desc: 'Liquid Assets as % of Short-Term Liabilities', color: '#38bdf8' },
-    { key: 'buybacks', name: 'Share Buybacks', series: 'NCBCEBQ027S', desc: 'Net Corporate Equity Liabilities / Retirements ($B)', color: '#a855f7' },
-    { key: 'mna', name: 'Mergers & Acquisitions', series: 'IEAADIN', desc: 'Direct Investment Equity Acquisitions ($B)', color: '#ec4899' },
-    { key: 'dividends', name: 'Dividend Payouts', series: 'DIVIDEND', desc: 'Net Corporate Dividends ($B)', color: '#6366f1' }
+  const cardDefs = [
+    { key: 'defaults',       name: 'Defaults & Delinquencies',  color: '#ef4444', desc: 'C&I Loan Delinquency Rate (%)' },
+    { key: 'profit_margins', name: 'Corporate Profit Margins',   color: '#10b981', desc: 'After-Tax Profits / GDP (%)' },
+    { key: 'capex',          name: 'CAPEX (Investment Cycle)',   color: '#f59e0b', desc: 'Private Nonresidential Investment ($B)' },
+    { key: 'cash',           name: 'Corporate Cash / Liquidity', color: '#38bdf8', desc: 'Liquid Assets / ST Liabilities (%)' },
+    { key: 'buybacks',       name: 'Share Buybacks',             color: '#a855f7', desc: 'Net Equity Retirements ($B)' },
+    { key: 'mna',            name: 'M&A Deal Activity',         color: '#ec4899', desc: 'US Direct Investment Acquisitions ($B)' },
+    { key: 'dividends',      name: 'Dividend Payouts',           color: '#6366f1', desc: 'Net Corporate Dividends ($B)' },
   ];
 
-  cards.forEach(c => {
-    const cur = cycleData.current[c.key];
+  cardDefs.forEach(c => {
+    const cur = cycleData.current[c.key] || {};
     const div = document.createElement('div');
-    div.className = "glass-card p-5";
+    div.className = 'glass-card p-5';
+
+    const chgKey = cur.chg_1y !== undefined ? 'chg_1y' : 'yoy';
+    const chg = cur[chgKey];
+    const chgHtml = chg !== undefined ? `<span class="${chg >= 0 ? 'text-emerald-400' : 'text-rose-400'} text-xs font-semibold ml-auto">${chg > 0 ? '+' : ''}${chg}${chgKey === 'yoy' ? '% YoY' : ' 1y'}</span>` : '';
+
     div.innerHTML = `
       <div class="flex justify-between items-start mb-2">
         <div>
-          <h4 class="font-bold text-slate-100 text-base">${c.name}</h4>
-          <p class="text-xs text-slate-400 font-mono">${c.desc}</p>
+          <h4 class="font-bold text-slate-100 text-sm">${c.name}</h4>
+          <p class="text-[10px] text-slate-400 font-mono">${c.desc}</p>
         </div>
-        <span class="text-xs px-2 py-0.5 rounded-full font-bold bg-slate-800 text-slate-300 border border-slate-700">${cur?.phase || ''}</span>
+        <span class="text-[10px] px-2 py-0.5 rounded-full font-bold bg-slate-800 text-slate-300 border border-slate-700 ml-2 whitespace-nowrap">${cur.phase || ''}</span>
       </div>
       <div class="flex items-baseline gap-2 my-2">
-        <span class="text-2xl font-black text-white font-mono">${cur?.value ?? '-'}</span>
-        <span class="text-xs text-slate-400 font-mono">${cur?.unit ?? ''}</span>
-        ${cur?.chg_1y !== undefined ? `<span class="text-xs font-semibold ${cur.chg_1y >= 0 ? 'text-emerald-400' : 'text-rose-400'} ml-auto">${cur.chg_1y > 0 ? '+' : ''}${cur.chg_1y} 1y</span>` : ''}
-        ${cur?.yoy !== undefined ? `<span class="text-xs font-semibold ${cur.yoy >= 0 ? 'text-emerald-400' : 'text-rose-400'} ml-auto">${cur.yoy > 0 ? '+' : ''}${cur.yoy}% YoY</span>` : ''}
+        <span class="text-xl font-black text-white font-mono">${cur.value ?? '-'}</span>
+        <span class="text-xs text-slate-400">${cur.unit ?? ''}</span>
+        ${chgHtml}
       </div>
-      <div class="h-20 w-full mt-3">
-        <canvas id="mini-chart-${c.key}"></canvas>
-      </div>
+      <div class="h-16 w-full mt-3"><canvas id="mini-${c.key}"></canvas></div>
     `;
     container.appendChild(div);
 
-    // Mini Sparkline Chart
     setTimeout(() => {
-      const miniCtx = document.getElementById(`mini-chart-${c.key}`)?.getContext('2d');
-      if (miniCtx) {
-        new Chart(miniCtx, {
-          type: 'line',
-          data: {
-            labels: cycleData.timeline.map(r => r.quarter_label),
-            datasets: [{
-              data: cycleData.timeline.map(r => r[c.key]?.value ?? 0),
-              borderColor: c.color,
-              borderWidth: 2,
-              pointRadius: 0,
-              fill: false,
-              tension: 0.3
-            }]
-          },
-          options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: { legend: { display: false }, tooltip: { enabled: true } },
-            scales: {
-              x: { display: false },
-              y: { display: false }
-            }
-          }
-        });
-      }
+      const mc = document.getElementById(`mini-${c.key}`)?.getContext('2d');
+      if (!mc) return;
+      new Chart(mc, {
+        type: 'line',
+        data: {
+          labels: cycleData.timeline.map(r => r.quarter_label),
+          datasets: [{ data: cycleData.timeline.map(r => (r[c.key] || {}).value ?? 0),
+            borderColor: c.color, borderWidth: 2, pointRadius: 0, fill: false, tension: 0.3 }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { display: false }, tooltip: { enabled: false } },
+          scales: { x: { display: false }, y: { display: false } }
+        }
+      });
     }, 50);
   });
 }
