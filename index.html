@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Credit Cycle Monitor | Invesco Framework & 20-Year Historical Macro Model</title>
+  <title>Credit Cycle Monitor</title>
   
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -32,58 +32,57 @@
 </head>
 <body class="bg-[#090d16] text-slate-100 antialiased p-4 md:p-8">
 
-  <div class="max-w-7xl mx-auto space-y-8">
+  <div class="max-w-7xl mx-auto space-y-6">
 
-    <!-- Top Navigation / Header -->
-    <header class="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-slate-800">
+    <!-- Header -->
+    <header class="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-slate-800">
       <div>
         <div class="flex items-center gap-3">
           <span class="p-2 rounded-xl bg-blue-600/20 border border-blue-500/30 text-blue-400">
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
             </svg>
           </span>
           <div>
-            <h1 class="text-2xl md:text-3xl font-extrabold tracking-tight text-white">Credit Cycle Monitor</h1>
-            <p class="text-xs md:text-sm text-slate-400">Based on the Invesco Macro Framework &bull; Powered by Federal Reserve (FRED) Data (2004–2026)</p>
+            <h1 class="text-xl md:text-2xl font-bold tracking-tight text-white">Credit Cycle Monitor</h1>
+            <p class="text-xs text-slate-400">Federal Reserve (FRED) Data &bull; 1980–2026</p>
           </div>
         </div>
       </div>
 
       <!-- Live Status Pills -->
-      <div class="flex flex-wrap items-center gap-3">
-        <div class="bg-slate-900/90 border border-slate-800 px-4 py-2 rounded-xl text-right">
-          <div class="text-[10px] uppercase tracking-wider text-slate-500 font-semibold">Current Quarter</div>
-          <div id="current-quarter-badge" class="text-base font-bold text-sky-400 font-mono">Q3 2026</div>
+      <div class="flex flex-wrap items-center gap-2">
+        <div class="bg-slate-900/90 border border-slate-800 px-3.5 py-1.5 rounded-xl text-right">
+          <div class="text-[10px] uppercase tracking-wider text-slate-500 font-semibold">Quarter</div>
+          <div id="current-quarter-badge" class="text-sm font-bold text-sky-400 font-mono">Q3 2026</div>
         </div>
-        <div class="bg-slate-900/90 border border-slate-800 px-4 py-2 rounded-xl text-right">
-          <div class="text-[10px] uppercase tracking-wider text-slate-500 font-semibold">Credit Cycle Phase</div>
-          <div id="current-phase-badge" class="text-xs font-black uppercase px-2.5 py-0.5 rounded-full text-white inline-block mt-0.5 bg-emerald-600">LATE CYCLE</div>
+        <div class="bg-slate-900/90 border border-slate-800 px-3.5 py-1.5 rounded-xl text-right">
+          <div class="text-[10px] uppercase tracking-wider text-slate-500 font-semibold">Phase</div>
+          <div id="current-phase-badge" class="text-xs font-black uppercase px-2 py-0.5 rounded-full text-white inline-block mt-0.5 bg-emerald-600">LATE CYCLE</div>
         </div>
-        <div class="bg-slate-900/90 border border-slate-800 px-4 py-2 rounded-xl text-right">
-          <div class="text-[10px] uppercase tracking-wider text-slate-500 font-semibold">Composite Score</div>
-          <div id="composite-score-badge" class="text-base font-bold text-white font-mono">2.10 / 4.0</div>
+        <div class="bg-slate-900/90 border border-slate-800 px-3.5 py-1.5 rounded-xl text-right">
+          <div class="text-[10px] uppercase tracking-wider text-slate-500 font-semibold">Score</div>
+          <div id="composite-score-badge" class="text-sm font-bold text-white font-mono">2.10 / 4.0</div>
         </div>
       </div>
     </header>
 
-    <!-- Hero Section: The Invesco Credit Cycle Slope (Image Recreation with Live Vertical Marker) -->
-    <section class="glass-card p-6 md:p-8">
-      <div class="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-4">
+    <!-- The Invesco Credit Cycle Slope -->
+    <section class="glass-card p-5 md:p-6">
+      <div class="flex flex-col md:flex-row md:items-center justify-between gap-2 mb-3">
         <div>
-          <h2 class="text-xl md:text-2xl font-black tracking-tight text-white flex items-center gap-2">
+          <h2 class="text-lg font-bold tracking-tight text-white flex items-center gap-2">
             Phases of the Credit Cycle
-            <span class="text-xs font-normal text-slate-400 bg-slate-800/80 px-2.5 py-1 rounded-md border border-slate-700">Live Slope & Current Marker</span>
           </h2>
-          <p class="text-sm text-slate-400 mt-1">
-            Current trajectory slope: <span id="current-slope-text" class="text-slate-200">Calculating...</span>
+          <p class="text-xs text-slate-400 mt-0.5">
+            Trajectory: <span id="current-slope-text" class="text-slate-200">Calculating...</span>
           </p>
         </div>
-        <div class="flex items-center gap-4 text-xs font-medium">
-          <div class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-sky-500 inline-block"></span> Early cycle</div>
-          <div class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-teal-500 inline-block"></span> Mid-cycle</div>
-          <div class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-emerald-500 inline-block"></span> Late cycle</div>
-          <div class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-purple-500 inline-block"></span> Recession</div>
+        <div class="flex items-center gap-3 text-xs font-medium">
+          <div class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-sky-500 inline-block"></span> Early</div>
+          <div class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-teal-500 inline-block"></span> Mid</div>
+          <div class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block"></span> Late</div>
+          <div class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-purple-500 inline-block"></span> Recession</div>
         </div>
       </div>
 
@@ -92,76 +91,58 @@
         <canvas id="cycleCanvas" class="w-full h-full block"></canvas>
       </div>
 
-      <!-- Dynamic Phase Description Banner -->
-      <div class="mt-4 p-4 rounded-xl bg-slate-900/60 border border-slate-800 text-sm flex items-center justify-between gap-4">
-        <div class="flex items-center gap-3">
-          <span class="flex h-3 w-3 relative">
-            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-            <span class="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
-          </span>
-          <p id="phase-description-text" class="text-slate-300 font-medium">
-            Loading cycle description...
-          </p>
-        </div>
-        <span class="text-xs text-slate-500 whitespace-nowrap">Invesco Macro Framework Calibration</span>
+      <!-- Phase Description Banner -->
+      <div class="mt-3 p-3 rounded-xl bg-slate-900/60 border border-slate-800 text-xs flex items-center justify-between gap-4">
+        <p id="phase-description-text" class="text-slate-300 font-medium">
+          Loading cycle description...
+        </p>
       </div>
     </section>
 
-    <!-- 20-Year Historical Credit Cycle Trajectory (2004–2026) -->
-    <section class="glass-card p-6 md:p-8">
-      <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+    <!-- Historical Credit Cycle Trajectory (1980–2026) -->
+    <section class="glass-card p-5 md:p-6">
+      <div class="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-4">
         <div>
-          <h2 class="text-xl font-bold tracking-tight text-white flex items-center gap-2">
-            20-Year Credit Cycle Historical Curve (2004 – 2026)
-            <span class="text-xs font-mono bg-blue-950/70 text-blue-400 px-2 py-0.5 rounded border border-blue-800/50">91 Quarters Tracked</span>
+          <h2 class="text-lg font-bold tracking-tight text-white flex items-center gap-2">
+            Credit Cycle Historical Curve (1980 – 2026)
+            <span class="text-xs font-mono bg-blue-950/70 text-blue-400 px-2 py-0.5 rounded border border-blue-800/50">187 Quarters</span>
           </h2>
-          <p class="text-xs text-slate-400 mt-1">
-            Tracks historical credit expansions, the 2008 Great Financial Crisis, 2020 COVID shock, and the current cycle position.
-          </p>
         </div>
         
         <!-- Timeline Slider Controller -->
-        <div class="flex items-center gap-3 bg-slate-900/90 px-4 py-2 rounded-xl border border-slate-800">
-          <span class="text-xs text-slate-400 font-semibold whitespace-nowrap">Historical Scrubber:</span>
-          <input type="range" id="history-slider" min="0" max="90" value="90" class="w-36 md:w-52">
+        <div class="flex items-center gap-3 bg-slate-900/90 px-3.5 py-1.5 rounded-xl border border-slate-800">
+          <span class="text-xs text-slate-400 font-semibold whitespace-nowrap">Scrubber:</span>
+          <input type="range" id="history-slider" min="0" max="186" value="186" class="w-40 md:w-56">
           <span id="slider-label" class="text-xs font-mono text-sky-400 font-bold whitespace-nowrap">Q3 2026</span>
         </div>
       </div>
 
       <!-- Main Historical Chart -->
-      <div class="h-72 md:h-80 w-full">
+      <div class="h-64 md:h-72 w-full">
         <canvas id="historyChart"></canvas>
-      </div>
-
-      <div class="mt-4 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500 border-t border-slate-800/80 pt-3">
-        <span>Click any point on the historical chart to travel back in time and view the credit cycle slope for that period.</span>
-        <span>Data Source: St. Louis Fed (FRED) & Federal Reserve Financial Accounts</span>
       </div>
     </section>
 
     <!-- Reference Table & Dynamic Weighting Grid -->
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
-      <!-- Invesco Reference Matrix (Left 2 Columns) -->
-      <div class="lg:col-span-2 glass-card p-6 md:p-8">
-        <div class="flex items-center justify-between mb-4">
-          <div>
-            <h3 class="text-lg font-bold text-white flex items-center gap-2">
-              Invesco Reference Matrix & Live Indicator States
-            </h3>
-            <p class="text-xs text-slate-400">Faithfully mapped from the source diagram with real-time FRED metric values highlighted.</p>
-          </div>
+      <!-- Invesco Reference Matrix -->
+      <div class="lg:col-span-2 glass-card p-5 md:p-6">
+        <div class="mb-3">
+          <h3 class="text-base font-bold text-white">
+            Reference Matrix & Live Indicator States
+          </h3>
         </div>
 
         <div class="overflow-x-auto rounded-xl border border-slate-800">
           <table class="w-full text-left text-xs border-collapse">
             <thead>
               <tr class="bg-slate-900/90 text-slate-300 font-bold border-b border-slate-800">
-                <th class="py-3 px-4 w-1/5">Indicators</th>
-                <th class="py-3 px-4 w-1/5 bg-sky-950/40 text-sky-400 border-l border-slate-800">Early cycle</th>
-                <th class="py-3 px-4 w-1/5 bg-teal-950/40 text-teal-400 border-l border-slate-800">Mid-cycle</th>
-                <th class="py-3 px-4 w-1/5 bg-emerald-950/40 text-emerald-400 border-l border-slate-800">Late cycle</th>
-                <th class="py-3 px-4 w-1/5 bg-purple-950/40 text-purple-400 border-l border-slate-800">Recession</th>
+                <th class="py-2.5 px-3 w-1/5">Indicator</th>
+                <th class="py-2.5 px-3 w-1/5 bg-sky-950/40 text-sky-400 border-l border-slate-800">Early cycle</th>
+                <th class="py-2.5 px-3 w-1/5 bg-teal-950/40 text-teal-400 border-l border-slate-800">Mid-cycle</th>
+                <th class="py-2.5 px-3 w-1/5 bg-emerald-950/40 text-emerald-400 border-l border-slate-800">Late cycle</th>
+                <th class="py-2.5 px-3 w-1/5 bg-purple-950/40 text-purple-400 border-l border-slate-800">Recession</th>
               </tr>
             </thead>
             <tbody id="invesco-table-body" class="divide-y divide-slate-800/60 bg-slate-950/50">
@@ -169,76 +150,51 @@
             </tbody>
           </table>
         </div>
-
-        <p class="text-[11px] text-slate-500 mt-3 italic">
-          Source: Invesco; CAPEX stands for capital expenditure, the use of company funds to acquire or upgrade physical assets such as property, industrial buildings or equipment.
-        </p>
       </div>
 
-      <!-- Dynamic Weighting Controller (Right 1 Column) -->
-      <div class="glass-card p-6 md:p-8 flex flex-col justify-between">
+      <!-- Dynamic Weighting Controller -->
+      <div class="glass-card p-5 md:p-6 flex flex-col justify-between">
         <div>
-          <div class="flex items-center justify-between mb-4">
-            <h3 class="text-lg font-bold text-white flex items-center gap-2">
-              Cycle Weighting Model
+          <div class="flex items-center justify-between mb-3">
+            <h3 class="text-base font-bold text-white">
+              Weighting Model
             </h3>
-            <span class="text-xs px-2 py-0.5 rounded bg-blue-950 text-blue-300 font-mono border border-blue-800">Interactive</span>
           </div>
-          <p class="text-xs text-slate-400 mb-5">
-            Test different economic hypotheses by toggling presets or adjusting individual weights. The slope marker updates in real time.
-          </p>
 
           <!-- Preset Toggle Buttons -->
-          <div class="grid grid-cols-2 gap-2 mb-6">
-            <button id="btn-preset-intel" class="px-3 py-2 text-xs font-bold rounded-lg bg-blue-600 hover:bg-blue-500 text-white transition-all shadow-md shadow-blue-600/20">
+          <div class="grid grid-cols-2 gap-2 mb-4">
+            <button id="btn-preset-intel" class="px-2.5 py-1.5 text-xs font-bold rounded-lg bg-blue-600 hover:bg-blue-500 text-white transition-all">
               Intelligent Weights
             </button>
-            <button id="btn-preset-equal" class="px-3 py-2 text-xs font-bold rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition-all">
-              Equal Weights (14.3%)
+            <button id="btn-preset-equal" class="px-2.5 py-1.5 text-xs font-bold rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition-all">
+              Equal Weights
             </button>
           </div>
 
           <!-- Weight Sliders List -->
-          <div id="weight-sliders" class="space-y-3">
+          <div id="weight-sliders" class="space-y-2.5">
             <!-- Dynamically generated sliders -->
           </div>
-        </div>
-
-        <div class="mt-6 pt-4 border-t border-slate-800 text-[11px] text-slate-400">
-          <strong class="text-slate-300">Model v3</strong>: Intelligent weights prioritize <strong class="text-slate-200">Defaults (22%)</strong>, <strong class="text-slate-200">Margins (17%)</strong>, <strong class="text-slate-200">CAPEX (17%)</strong>, and <strong class="text-slate-200">Cash (14%)</strong>. Full-sample z-scores + zero-phase EWMA smoothing.
         </div>
       </div>
 
     </div>
 
-    <!-- 7 Indicators Deep Dive Cards -->
-    <section class="space-y-4">
-      <div class="flex items-center justify-between">
-        <h3 class="text-xl font-bold tracking-tight text-white">
-          7 Indicator Historical Deep Dive (2004 – 2026)
-        </h3>
-        <span class="text-xs text-slate-400">Hover sparklines to view quarterly values</span>
-      </div>
+    <!-- Indicator Cards -->
+    <section class="space-y-3">
+      <h3 class="text-base font-bold tracking-tight text-white">
+        Indicators
+      </h3>
 
-      <div id="indicator-cards-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div id="indicator-cards-container" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
         <!-- Rendered by app.js -->
       </div>
     </section>
 
-    <!-- Methodology & Sources Footer -->
-    <footer class="pt-8 pb-12 border-t border-slate-800 text-xs text-slate-500 space-y-2">
-      <div class="flex flex-col md:flex-row justify-between gap-4">
-        <div>
-          <span class="font-bold text-slate-400">Credit Cycle Monitor</span> &bull; Built with Invesco Macro Framework & St. Louis Federal Reserve (FRED) API.
-        </div>
-        <div class="flex gap-4">
-          <span>Quarters Tracked: <strong class="text-slate-400">91 Quarters (2004–2026)</strong></span>
-          <span>Update Frequency: <strong class="text-slate-400">Quarterly</strong></span>
-        </div>
-      </div>
-      <p>
-        Disclaimer: This tool is designed for macroeconomic research and educational analysis of credit cycles and corporate balance sheet dynamics.
-      </p>
+    <!-- Footer -->
+    <footer class="pt-4 pb-8 border-t border-slate-800/80 text-xs text-slate-500 flex justify-between">
+      <span>Federal Reserve (FRED) Data &bull; 1980–2026</span>
+      <span>187 Quarters</span>
     </footer>
 
   </div>

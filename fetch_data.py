@@ -1,64 +1,26 @@
 """
-Credit Cycle Data Harvester v3 — Calibrated Expansion Pressure Model
-=====================================================================
-Mathematical framework:
-  1. Fetch 20+ years of quarterly FRED data for 7 Invesco indicators
-  2. For each indicator, derive a MONOTONE-THROUGH-CYCLE composite signal
-     using BOTH level and rate-of-change with correct economic sign:
+Credit Cycle Data Harvester v4 — Phase-Plane + Circular EWMA Model
+====================================================================
+Core innovation: split each indicator into two INDEPENDENT signals:
+  H  (economic health level)    = sign_i × clip(z_level_i, -3, 3)
+  M  (rate-of-change momentum)  = sign_i × tanh(z_mom_i)
 
-     defaults      : HIGH + RISING         → Recession (score → 4)
-                     HIGH + STABLE          → Early Cycle (plateau)
-                     FALLING               → Mid-Cycle
-                     LOW                   → Late Cycle
-     profit_margins: RECOVERING             → Early Cycle
-                     EXPANDING              → Mid Cycle
-                     PLATEAUING HIGH        → Late Cycle
-                     COLLAPSING             → Recession
-     capex_yoy     : NEGATIVE YoY           → Recession
-                     TURNING POSITIVE       → Early Cycle
-                     MODERATE POSITIVE      → Mid Cycle
-                     ACCELERATING           → Late Cycle
-     buybacks      : LOW / ZERO             → Early Cycle
-                     GROWING               → Mid Cycle
-                     AGGRESSIVE            → Late Cycle
-                     HALTED / CRASHING      → Recession
-     mna           : LOW                   → Early Cycle
-                     GROWING               → Mid Cycle
-                     PEAK / MEGA-DEALS      → Late Cycle
-                     COLLAPSING            → Recession
-     cash_ratio    : HIGH + RISING          → Early Cycle (hoarding)
-                     HIGH + DECLINING       → Mid Cycle (deploying)
-                     LOW / DECLINING        → Late Cycle
-                     LOW + RISING           → Recession (forced rebuild)
+Map composite (H, M) to a PHASE PLANE ANGLE via atan2:
+  ─────────────────────────────────────────
+  Quadrant / Condition         → Score range
+  ─────────────────────────────────────────
+  H>0, M>0  (good & improving) → Mid [1, 2)
+  H>0, M<0  (good, decelerating)→ Late [2, 3)
+  H<0, M<0  (bad & worsening)  → Recession [3, 4)
+  H<0, M>0  (bad but improving) → Early [0, 1)
+  ─────────────────────────────────────────
 
-     NOTE: Dividends payout ratio is REMOVED as a standalone signal because
-     it has cross-cycle ambiguity (falls during early recovery when profits
-     surge faster than dividends, creating a false "late-cycle" reading).
-     Instead we use ABSOLUTE dividend payouts with the capex and cash signals
-     providing the payout context.
+Formula: score = (π − atan2(M, H)) mod 2π / 2π × 4
 
-  3. Compute expansion pressure P_i ∈ [-2.5, +2.5] for each indicator:
-       P_i = sign_i × [ w_L × clip(z_level, -3, 3)
-                       + w_M × tanh(z_momentum) ]
-     with z-scores computed over full-sample (not rolling), so that the GFC
-     and COVID shocks register as true outliers.
+Smooth with CIRCULAR zero-phase EWMA (cos/sin averaging) to handle the
+discontinuous Recession→Early wrap-around without aliasing.
 
-  4. Composite pressure = weighted sum across indicators.
-
-  5. Map to Cycle Score ∈ [0, 4]:
-       S_raw = 2 + 2 × tanh(K × P_composite)
-
-  6. Smooth with a FORWARD-BACKWARD EWMA (Butterworth-style zero-phase):
-       First pass  : causal EWMA   α = 0.45  (recent signal dominates)
-       Reverse pass: anti-causal   α = 0.45  (removes phase lag)
-     This gives smooth, phase-correct cycle that spans all 4 Invesco phases
-     without unrealistic single-quarter jumps.
-
-Phase boundaries (score bands):
-  [0.0, 1.0) → Early Cycle
-  [1.0, 2.0) → Mid-Cycle
-  [2.0, 3.0) → Late Cycle
-  [3.0, 4.0) → Recession
+Data: 1980 Q1 → 2026 Q3.  Missing early series get z = 0 (neutral).
 """
 
 import subprocess, csv, json, math
@@ -66,354 +28,395 @@ from datetime import datetime
 import numpy as np
 
 SERIES_MAP = {
-    'defaults': 'DRBLACBS',
-    'profits':  'CP',
-    'gdp':      'GDP',
-    'capex':    'PNFI',
-    'dividends':'DIVIDEND',
-    'buybacks': 'NCBCEBQ027S',
-    'mna':      'IEAADIN',
-    'cash_ratio':'BOGZ1FL104001006Q'
+    'defaults':  'DRBLACBS',         # C&I delinquency rate (starts ~1987 Q4)
+    'profits':   'CP',               # Corporate profits after tax
+    'gdp':       'GDP',
+    'capex':     'PNFI',             # Private nonresidential fixed investment
+    'dividends': 'DIVIDEND',
+    'buybacks':  'NCBCEBQ027S',      # NFC equity liabilities (retirements)
+    'mna':       'IEAADIN',          # US direct-investment equity acquisitions (~2000+)
+    'cash':      'BOGZ1FL104001006Q' # NFC liquid assets / ST liabilities
 }
 
-# Weights for intelligent model
-# NOTE: 6 indicators (dividends payout removed; dividends level kept under mna/buybacks context)
-W_INTEL = {
-    'defaults':       0.22,   # Primary credit stress barometer
-    'profit_margins': 0.17,   # Corporate earnings engine
-    'capex':          0.17,   # Investment cycle signal
-    'cash':           0.14,   # Liquidity / risk-appetite signal
-    'buybacks':       0.15,   # Financial excess signal
-    'mna':            0.15,   # Deal activity / valuation signal
+# ── Sign convention: +1 = higher value → more expansionary ──────────────────
+SIGN = {
+    'defaults':       -1,   # High defaults → recession
+    'profit_margins': +1,   # High margins → expansion
+    'capex_yoy':      +1,
+    'buybacks':       +1,
+    'mna':            +1,
+    'cash_ratio':     -1,   # High cash = hoarding → early/recession
 }
-# Equal weights
-W_EQUAL = {k: round(1./len(W_INTEL), 4) for k in W_INTEL}
 
-K_SCALE = 1.05     # sensitivity of tanh mapping
-EWMA_A  = 0.45     # forward-backward EWMA alpha
+# ── Intelligent weights ──────────────────────────────────────────────────────
+W_INTEL = dict(defaults=0.22, profit_margins=0.18, capex=0.17,
+               cash=0.15, buybacks=0.14, mna=0.14)
+W_EQUAL = {k: round(1/len(W_INTEL), 4) for k in W_INTEL}
+
+# ── Phase-plane scale factors ────────────────────────────────────────────────
+H_SCALE = 1.40   # amplify level signal
+M_SCALE = 1.10   # amplify momentum signal
+EWMA_A  = 0.50   # forward-backward EWMA alpha
+
+DATE_START = "1980-01-01"
+DATE_END   = "2026-07-01"
+
+# ── NBER US recession dates ───────────────────────────────────────────────────
+NBER_RECESSIONS = [
+    {"start": "1980-01-01", "end": "1980-07-01", "label": "1980"},
+    {"start": "1981-07-01", "end": "1982-10-01", "label": "1981–82"},
+    {"start": "1990-07-01", "end": "1991-01-01", "label": "1990–91"},
+    {"start": "2001-01-01", "end": "2001-10-01", "label": "2001"},
+    {"start": "2007-10-01", "end": "2009-04-01", "label": "GFC 2008–09"},
+    {"start": "2020-01-01", "end": "2020-04-01", "label": "COVID 2020"},
+]
 
 # ─────────────────────────────────────────────────────────────────────────────
 def fetch_fred(sid):
     url = f"https://fred.stlouisfed.org/graph/fredgraph.csv?id={sid}"
-    print(f"  Fetching {sid} ...", end=" ")
+    print(f"  {sid} ...", end=" ")
     res = subprocess.run(["curl.exe", "-s", url], capture_output=True, text=True)
     data = {}
     if res.returncode != 0:
         print("FAILED"); return data
-    lines = res.stdout.strip().split("\n")
-    reader = csv.reader(lines)
-    next(reader, None)
-    for row in reader:
+    for row in csv.reader(res.stdout.strip().split("\n")[1:]):
         if len(row) >= 2 and row[1] not in ('.', '', 'NA'):
-            try: data[row[0].strip()] = float(row[1].strip())
-            except ValueError: pass
+            try:
+                data[row[0].strip()] = float(row[1].strip())
+            except ValueError:
+                pass
     print(f"{len(data)} obs"); return data
 
 def full_zscore(arr):
-    """Full-sample z-score (mean and std of entire series)."""
+    """Z-score over full sample."""
     a = np.asarray(arr, float)
     mu, sd = a.mean(), a.std(ddof=0)
     return (a - mu) / max(sd, 1e-12)
 
-def zscore_momentum(arr, lag=4):
-    """Full-sample z-score of lag-differenced series."""
+def lag_diff_zscore(arr, lag=4):
+    """Z-score of lag-differenced series (momentum signal)."""
     a = np.asarray(arr, float)
-    mom = np.zeros(len(a))
-    for i in range(len(a)):
-        prev = max(0, i - lag)
-        mom[i] = a[i] - a[prev]
+    mom = np.array([a[i] - a[max(0, i - lag)] for i in range(len(a))])
     return full_zscore(mom)
 
-def expansion_pressure(z_lvl, z_mom, sign, lvl_w=0.55, mom_w=0.45):
+def circular_fbewma(raw_scores, alpha):
     """
-    Expansion pressure for one indicator at one time step.
-    sign=+1 → higher value / positive momentum = more expansionary
-    sign=-1 → higher value / positive momentum = more recessionary
+    Zero-phase circular EWMA smoother.
+    Converts scores → angles → cos/sin → EWMA forward → EWMA backward → angles → scores.
+    Handles the 0↔4 wrap-around boundary correctly.
     """
-    raw = sign * (lvl_w * np.clip(z_lvl, -3, 3) + mom_w * np.tanh(z_mom))
-    return float(np.clip(raw, -2.5, 2.5))
+    angles  = raw_scores / 4.0 * 2.0 * np.pi
+    cos_arr = np.cos(angles)
+    sin_arr = np.sin(angles)
 
-def fbewma(arr, alpha):
-    """Zero-phase (forward-backward) EWMA smoother."""
-    def causal(a, al):
-        out = np.zeros(len(a))
-        out[0] = a[0]
+    def fwd(a):
+        o = np.empty_like(a); o[0] = a[0]
         for i in range(1, len(a)):
-            out[i] = al * a[i] + (1 - al) * out[i-1]
-        return out
-    return causal(causal(arr, alpha)[::-1], alpha)[::-1]
+            o[i] = alpha * a[i] + (1 - alpha) * o[i-1]
+        return o
+
+    def bwd(a):
+        o = np.empty_like(a); o[-1] = a[-1]
+        for i in range(len(a)-2, -1, -1):
+            o[i] = alpha * a[i] + (1 - alpha) * o[i+1]
+        return o
+
+    cos_s = bwd(fwd(cos_arr))
+    sin_s = bwd(fwd(sin_arr))
+    ang_s = np.arctan2(sin_s, cos_s) % (2.0 * np.pi)
+    return np.clip(ang_s / (2.0 * np.pi) * 4.0, 0.0, 4.0)
+
+def pp_score(H, M):
+    """Phase-plane score ∈ [0, 4] from health (H) and momentum (M) in [-1, 1]."""
+    theta = math.atan2(M, H)
+    clock = (math.pi - theta) % (2.0 * math.pi)
+    return clock / (2.0 * math.pi) * 4.0
 
 def score_to_phase(s):
-    if s < 1.0: return "Early cycle", "#0284c7"
-    if s < 2.0: return "Mid-cycle",   "#0d9488"
-    if s < 3.0: return "Late cycle",  "#16a34a"
-    return             "Recession",   "#9333ea"
+    if s < 1.0: return "Early cycle",  "#0284c7"
+    if s < 2.0: return "Mid-cycle",    "#0d9488"
+    if s < 3.0: return "Late cycle",   "#16a34a"
+    return             "Recession",    "#9333ea"
 
 # ─────────────────────────────────────────────────────────────────────────────
 def run_pipeline():
-    print("=== Credit Cycle Pipeline v3 ===\n")
-
-    # 1. Fetch FRED series
-    print("Fetching FRED series:")
+    print("=== Credit Cycle Pipeline v4 (Phase-Plane) ===\n")
+    print("Fetching FRED:")
     raw = {k: fetch_fred(v) for k, v in SERIES_MAP.items()}
     print()
 
-    # 2. Quarterly date grid
+    # ── Quarterly date grid ──────────────────────────────────────────────────
     dates = [f"{y}-{m:02d}-01"
-             for y in range(2004, 2027)
+             for y in range(1980, 2027)
              for m in [1, 4, 7, 10]
-             if f"{y}-{m:02d}-01" <= "2026-07-01"]
+             if DATE_START <= f"{y}-{m:02d}-01" <= DATE_END]
     N = len(dates)
     print(f"Grid: {dates[0]} -> {dates[-1]}  ({N} quarters)\n")
 
-    # 3. Assemble raw arrays with carry-forward
+    # ── Carry-forward fill for each raw series ───────────────────────────────
     def build(key, fallback):
         arr = np.zeros(N); prev = fallback
         for i, d in enumerate(dates):
-            v = raw[key].get(d, prev)
-            if v is None: v = prev
-            arr[i] = v; prev = v
+            v = raw[key].get(d, None)
+            if v is not None: prev = v
+            arr[i] = prev
         return arr
 
-    def_arr  = build('defaults',  1.3)
-    cp_arr   = build('profits',   3000.)
-    gdp_arr  = build('gdp',       25000.)
-    cpx_arr  = build('capex',     3500.)
-    div_arr  = build('dividends', 1800.)
-    bb_arr   = np.abs(build('buybacks',  200000.)) / 1000.   # $B
-    mna_arr  = build('mna',       90000.) / 1000.             # $B
-    csh_arr  = build('cash_ratio',95.)
+    def_arr  = build('defaults',  1.3)   # DRBLACBS: valid ~1987 Q4 onward
+    cp_arr   = build('profits',   2000.)
+    gdp_arr  = build('gdp',       10000.)
+    cpx_arr  = build('capex',     1000.)
+    div_arr  = build('dividends', 400.)
+    bb_arr   = np.abs(build('buybacks', 50000.)) / 1000.    # $B
+    mna_arr  = build('mna',       40000.) / 1000.            # $B
+    csh_arr  = build('cash',      90.)
 
-    # Derived series
-    margin_arr  = cp_arr / np.maximum(gdp_arr, 1.) * 100.     # % of GDP
-    capex_yoy   = np.zeros(N)
+    # Find when each series actually starts (has real data from FRED)
+    def first_date(key):
+        dates_in_fred = sorted(raw[key].keys())
+        return dates_in_fred[0] if dates_in_fred else "2099-01-01"
+
+    def_start  = first_date('defaults')   # ~1987-10-01
+    mna_start  = first_date('mna')        # ~2000-01-01
+
+    # ── Derived series ───────────────────────────────────────────────────────
+    margin_arr = cp_arr / np.maximum(gdp_arr, 1.0) * 100.0
+    capex_yoy  = np.zeros(N)
     for i in range(N):
-        p4 = max(0, i-4)
-        capex_yoy[i] = (cpx_arr[i] - cpx_arr[p4]) / max(cpx_arr[p4], 1.) * 100.
-    div_abs     = div_arr                                       # $B SAAR
+        p = max(0, i - 4)
+        capex_yoy[i] = (cpx_arr[i] - cpx_arr[p]) / max(cpx_arr[p], 1.) * 100.
 
-    # 4. Full-sample z-scores and momentums
-    # (Full-sample ensures GFC/COVID register as true extremes)
-    zl_def  = full_zscore(def_arr)
-    zm_def  = zscore_momentum(def_arr, lag=4)
+    # ── Full-sample z-scores (computed over available portion only) ──────────
+    # For indicators with limited history, compute z over their live window,
+    # set z = 0 before they are available.
 
+    def safe_zscore(arr, avail_from_date):
+        """z-score the array, but only using data from avail_from_date onward;
+           before that date return 0.0."""
+        avail_mask = np.array([d >= avail_from_date for d in dates], dtype=float)
+        out = np.zeros(N)
+        idx = np.where(avail_mask)[0]
+        if len(idx) < 4:
+            return out
+        sub = arr[idx]
+        mu, sd = sub.mean(), sub.std(ddof=0)
+        if sd < 1e-12:
+            return out
+        for i in idx:
+            out[i] = (arr[i] - mu) / sd
+        return out
+
+    zl_def  = safe_zscore(def_arr,    def_start)
     zl_mar  = full_zscore(margin_arr)
-    zm_mar  = zscore_momentum(margin_arr, lag=4)
-
     zl_cpy  = full_zscore(capex_yoy)
-    zm_cpy  = zscore_momentum(capex_yoy, lag=2)   # 2Q momentum for capex
-
-    zl_bb   = full_zscore(bb_arr)
-    zm_bb   = zscore_momentum(bb_arr, lag=4)
-
-    zl_mna  = full_zscore(mna_arr)
-    zm_mna  = zscore_momentum(mna_arr, lag=4)
-
+    zl_bb   = safe_zscore(bb_arr,     dates[0])   # buybacks: available all the way back
+    zl_mna  = safe_zscore(mna_arr,    mna_start)
     zl_csh  = full_zscore(csh_arr)
-    zm_csh  = zscore_momentum(csh_arr, lag=4)
 
-    # 5. Per-indicator expansion pressures
-    # defaults: higher defaults = RECESSIONARY → sign = -1
-    P_def = np.array([expansion_pressure(zl_def[i], zm_def[i], sign=-1) for i in range(N)])
+    zm_def  = safe_zscore(lag_diff_zscore(def_arr),    def_start)
+    zm_mar  = full_zscore(lag_diff_zscore(margin_arr))
+    zm_cpy  = full_zscore(lag_diff_zscore(capex_yoy, lag=2))
+    zm_bb   = safe_zscore(lag_diff_zscore(bb_arr),     dates[0])
+    zm_mna  = safe_zscore(lag_diff_zscore(mna_arr),    mna_start)
+    zm_csh  = full_zscore(lag_diff_zscore(csh_arr))
 
-    # profit_margins: higher margins = EXPANSIONARY → sign = +1
-    P_mar = np.array([expansion_pressure(zl_mar[i], zm_mar[i], sign=+1) for i in range(N)])
+    # ── Per-indicator level and momentum pressures ───────────────────────────
+    S = SIGN
+    def lp(z, sign): return sign * np.clip(z, -3.0, 3.0)   # level pressure
+    def mp(z, sign): return sign * np.tanh(z)               # momentum pressure
 
-    # capex YoY: higher growth = EXPANSIONARY → sign = +1
-    P_cpy = np.array([expansion_pressure(zl_cpy[i], zm_cpy[i], sign=+1) for i in range(N)])
+    lp_def = lp(zl_def,  S['defaults'])
+    lp_mar = lp(zl_mar,  S['profit_margins'])
+    lp_cpy = lp(zl_cpy,  S['capex_yoy'])
+    lp_bb  = lp(zl_bb,   S['buybacks'])
+    lp_mna = lp(zl_mna,  S['mna'])
+    lp_csh = lp(zl_csh,  S['cash_ratio'])
 
-    # buybacks: higher = EXPANSIONARY (late-cycle excess) → sign = +1
-    P_bb  = np.array([expansion_pressure(zl_bb[i],  zm_bb[i],  sign=+1) for i in range(N)])
+    mp_def = mp(zm_def,  S['defaults'])
+    mp_mar = mp(zm_mar,  S['profit_margins'])
+    mp_cpy = mp(zm_cpy,  S['capex_yoy'])
+    mp_bb  = mp(zm_bb,   S['buybacks'])
+    mp_mna = mp(zm_mna,  S['mna'])
+    mp_csh = mp(zm_csh,  S['cash_ratio'])
 
-    # M&A: higher = EXPANSIONARY (peak deal activity) → sign = +1
-    P_mna = np.array([expansion_pressure(zl_mna[i], zm_mna[i], sign=+1) for i in range(N)])
+    # key order must match W_INTEL
+    lp_map = dict(defaults=lp_def, profit_margins=lp_mar, capex=lp_cpy,
+                  cash=lp_csh, buybacks=lp_bb, mna=lp_mna)
+    mp_map = dict(defaults=mp_def, profit_margins=mp_mar, capex=mp_cpy,
+                  cash=mp_csh, buybacks=mp_bb, mna=mp_mna)
 
-    # cash ratio: higher = CONSERVATIVE/EARLY-CYCLE → sign = -1
-    # BUT during recession, cash RISES because companies hoard → also recessionary
-    # so sign=-1 is correct: high cash → lower expansion pressure
-    P_csh = np.array([expansion_pressure(zl_csh[i], zm_csh[i], sign=-1) for i in range(N)])
+    def composite(weight_dict):
+        tw = sum(weight_dict.values())
+        PL = sum((weight_dict[k] / tw) * lp_map[k] for k in weight_dict)
+        PM = sum((weight_dict[k] / tw) * mp_map[k] for k in weight_dict)
+        return PL, PM
 
-    # 6. Intelligent-weight composite pressure
-    ind_pressures_arr = {
-        'defaults':       P_def,
-        'profit_margins': P_mar,
-        'capex':          P_cpy,
-        'buybacks':       P_bb,
-        'mna':            P_mna,
-        'cash':           P_csh,
-    }
-    total_w = sum(W_INTEL.values())
-    composite_intel = sum((W_INTEL[k] / total_w) * ind_pressures_arr[k] for k in W_INTEL)
-    composite_equal = sum((1./len(W_INTEL)) * ind_pressures_arr[k] for k in W_INTEL)
+    PL_intel, PM_intel = composite(W_INTEL)
+    PL_equal, PM_equal = composite(W_EQUAL)
 
-    # 7. Map pressure → raw cycle score [0, 4]
-    raw_intel = np.array([2.0 + 2.0 * math.tanh(K_SCALE * float(p)) for p in composite_intel])
-    raw_equal = np.array([2.0 + 2.0 * math.tanh(K_SCALE * float(p)) for p in composite_equal])
+    def scores_from_PL_PM(PL, PM):
+        raw = np.array([
+            pp_score(math.tanh(H_SCALE * float(PL[i])),
+                     math.tanh(M_SCALE * float(PM[i])))
+            for i in range(N)
+        ])
+        return circular_fbewma(raw, EWMA_A)
 
-    # 8. Zero-phase EWMA smooth
-    smooth_intel = np.clip(fbewma(raw_intel, EWMA_A), 0., 4.)
-    smooth_equal = np.clip(fbewma(raw_equal, EWMA_A), 0., 4.)
+    S_intel = scores_from_PL_PM(PL_intel, PM_intel)
+    S_equal = scores_from_PL_PM(PL_equal, PM_equal)
 
-    # 9. Assemble output records
+    # ── Diagnostics ──────────────────────────────────────────────────────────
+    labels = [f"Q{(int(d[5:7])-1)//3+1} {d[:4]}" for d in dates]
+    print("=== Phase Trajectory (every 4 quarters) ===")
+    for i in range(0, N, 4):
+        s = S_intel[i]
+        bar = '#' * int(s * 8) + '.' * max(0, 32 - int(s * 8))
+        ph = score_to_phase(s)[0]
+        print(f"  {labels[i]:8s}  {s:.2f}  |{bar}| {ph}")
+    print()
+
+    cur_s = S_intel[-1]
+    print(f"CURRENT  {labels[-1]}  Score={cur_s:.3f}  {score_to_phase(cur_s)[0]}")
+    scores_arr = list(S_intel)
+    print(f"Score range: {min(scores_arr):.2f} -> {max(scores_arr):.2f}")
+    ph_counts = {}
+    for s in scores_arr:
+        ph = score_to_phase(s)[0]
+        ph_counts[ph] = ph_counts.get(ph, 0) + 1
+    print("Phase distribution:", ph_counts)
+
+    # ── Assemble records ──────────────────────────────────────────────────────
     records = []
     for i, d in enumerate(dates):
-        S = float(smooth_intel[i])
-        S_eq = float(smooth_equal[i])
+        S  = float(S_intel[i])
+        Sq = float(S_equal[i])
         phase_name, phase_color = score_to_phase(S)
 
-        chg4 = lambda a: float(a[i] - a[max(0,i-4)])
-        pct4 = lambda a: float((a[i]-a[max(0,i-4)])/max(a[max(0,i-4)],1.)*100.)
+        def c4(a): return float(a[i] - a[max(0, i-4)])
+        def p4(a): return float((a[i]-a[max(0,i-4)]) / max(a[max(0,i-4)], 1.) * 100.)
 
-        # Indicator state labels (inferred from composite score)
-        def_state = (("Rise" if S>=3 else "Bottom" if S>=2 else "Trend lower" if S>=1 else "Plateau"))
-        mar_state = (("Decline & bottom" if S>=3 else "Plateau" if S>=2 else "Expand" if S>=1 else "Recover"))
-        cpx_state = (("Declines" if S>=3 else "Accelerates" if S>=2 else "Stabilizes" if S>=1 else "Bottoms then rises"))
-        div_state = (("Payouts decline, ratios rise" if S>=3 else "Payouts rise, ratios decline" if S>=2 else "Payouts rise, ratios stabilize" if S>=1 else "Payouts and ratios rise"))
-        bb_state  = (("Falling or halted" if S>=3 else "Rising, nearing/exceeding FCF" if S>=2 else "Rising < FCF" if S>=1 else "Reinstated"))
-        mna_state = (("End of cycle, cheap valuations" if S>=3 else "Peaks, mega-deals, high valuations" if S>=2 else "Growing, major deals emerge" if S>=1 else "Start of cycle"))
-        csh_state = (("Rebuilding" if S>=3 else "Decline" if S>=2 else "Build-up and redeployment" if S>=1 else "Build-up"))
+        st_def = "Rise" if S>=3 else "Bottom" if S>=2 else "Trend lower" if S>=1 else "Plateau"
+        st_mar = "Decline" if S>=3 else "Plateau" if S>=2 else "Expand" if S>=1 else "Recover"
+        st_cpx = "Declines" if S>=3 else "Accelerates" if S>=2 else "Stabilizes" if S>=1 else "Bottoms"
+        st_div = "Payouts decline" if S>=3 else "Payouts rise, ratios fall" if S>=2 else "Payouts rise" if S>=1 else "Payouts and ratios rise"
+        st_bb  = "Halted" if S>=3 else "Near/above FCF" if S>=2 else "Rising < FCF" if S>=1 else "Reinstated"
+        st_mna = "Cheap valuations" if S>=3 else "Mega-deals" if S>=2 else "Growing" if S>=1 else "Starting"
+        st_csh = "Rebuilding" if S>=3 else "Declining" if S>=2 else "Redeploying" if S>=1 else "Building"
+
+        has_def = d >= def_start
+        has_mna = d >= mna_start
 
         rec = {
-            'date':                     d,
-            'quarter_label':            f"Q{(int(d[5:7])-1)//3+1} {d[:4]}",
-            'composite_score_weighted': round(S, 3),
-            'composite_score_equal':    round(S_eq, 3),
-            'composite_phase':          phase_name,
-            'phase_color':              phase_color,
-            'cycle_x_pct':              round(S / 4. * 100., 1),
+            'date':         d,
+            'quarter_label': f"Q{(int(d[5:7])-1)//3+1} {d[:4]}",
+            'composite_score_weighted': round(S,  3),
+            'composite_score_equal':    round(Sq, 3),
+            'composite_phase':  phase_name,
+            'phase_color':      phase_color,
+            'cycle_x_pct':      round(S / 4. * 100., 1),
 
-            # Per-indicator expansion pressures (used by frontend for re-weighting)
+            # Per-indicator level + momentum for frontend re-weighting
+            'indicator_components': {
+                'defaults':       {'level': round(float(lp_def[i]),3), 'mom': round(float(mp_def[i]),3), 'available': has_def},
+                'profit_margins': {'level': round(float(lp_mar[i]),3), 'mom': round(float(mp_mar[i]),3), 'available': True},
+                'capex':          {'level': round(float(lp_cpy[i]),3), 'mom': round(float(mp_cpy[i]),3), 'available': True},
+                'cash':           {'level': round(float(lp_csh[i]),3), 'mom': round(float(mp_csh[i]),3), 'available': True},
+                'buybacks':       {'level': round(float(lp_bb[i]), 3), 'mom': round(float(mp_bb[i]), 3), 'available': True},
+                'mna':            {'level': round(float(lp_mna[i]),3), 'mom': round(float(mp_mna[i]),3), 'available': has_mna},
+            },
+            # Legacy key kept for display / indicator cards
             'indicator_pressures': {
-                'defaults':       round(float(P_def[i]),  3),
-                'profit_margins': round(float(P_mar[i]),  3),
-                'capex':          round(float(P_cpy[i]),  3),
-                'buybacks':       round(float(P_bb[i]),   3),
-                'mna':            round(float(P_mna[i]),  3),
-                'cash':           round(float(P_csh[i]),  3),
-                'dividends':      round(float(P_mar[i]) * 0.3, 3),  # proxy for display
+                'defaults':       round(float(lp_def[i]+mp_def[i])*0.5, 3),
+                'profit_margins': round(float(lp_mar[i]+mp_mar[i])*0.5, 3),
+                'capex':          round(float(lp_cpy[i]+mp_cpy[i])*0.5, 3),
+                'cash':           round(float(lp_csh[i]+mp_csh[i])*0.5, 3),
+                'buybacks':       round(float(lp_bb[i]+mp_bb[i])*0.5, 3),
+                'mna':            round(float(lp_mna[i]+mp_mna[i])*0.5, 3),
+                'dividends':      round(float(lp_mar[i])*0.2, 3),
             },
 
-            # Human-readable display fields
             'defaults': {
-                'value':    round(float(def_arr[i]), 2),
-                'unit':     '%',
-                'chg_1y':   round(chg4(def_arr), 2),
-                'phase':    def_state,
-                'phase_score': round(float(P_def[i]), 3),
-                'z_level':  round(float(zl_def[i]), 2),
+                'value': round(float(def_arr[i]),2), 'unit':'%',
+                'chg_1y': round(c4(def_arr),2), 'phase': st_def,
+                'phase_score': round(float(lp_def[i]),3),
+                'available': has_def,
             },
             'profit_margins': {
-                'value':    round(float(margin_arr[i]), 2),
-                'unit':     '% of GDP',
-                'chg_1y':   round(chg4(margin_arr), 2),
-                'phase':    mar_state,
-                'phase_score': round(float(P_mar[i]), 3),
-                'z_level':  round(float(zl_mar[i]), 2),
+                'value': round(float(margin_arr[i]),2), 'unit':'% of GDP',
+                'chg_1y': round(c4(margin_arr),2), 'phase': st_mar,
+                'phase_score': round(float(lp_mar[i]),3),
             },
             'capex': {
-                'value':    round(float(cpx_arr[i]), 1),
-                'unit':     '$B',
-                'yoy':      round(float(capex_yoy[i]), 1),
-                'phase':    cpx_state,
-                'phase_score': round(float(P_cpy[i]), 3),
-                'z_level':  round(float(zl_cpy[i]), 2),
+                'value': round(float(cpx_arr[i]),1), 'unit':'$B',
+                'yoy': round(float(capex_yoy[i]),1), 'phase': st_cpx,
+                'phase_score': round(float(lp_cpy[i]),3),
             },
             'dividends': {
-                'value':        round(float(div_arr[i]), 1),
-                'unit':         '$B',
-                'payout_ratio': round(float(div_arr[i] / max(cp_arr[i], 1.) * 100.), 1),
-                'chg_1y':       round(chg4(div_arr), 1),
-                'phase':        div_state,
-                'phase_score':  round(float(P_mar[i]) * 0.3, 3),
-                'z_level':      round(float(zl_mar[i]), 2),
+                'value': round(float(div_arr[i]),1), 'unit':'$B',
+                'payout_ratio': round(float(div_arr[i]/max(cp_arr[i],1.)*100.),1),
+                'chg_1y': round(c4(div_arr),1), 'phase': st_div,
+                'phase_score': round(float(lp_mar[i])*0.3,3),
             },
             'buybacks': {
-                'value':    round(float(bb_arr[i]), 1),
-                'unit':     '$B',
-                'yoy':      round(pct4(bb_arr), 1),
-                'phase':    bb_state,
-                'phase_score': round(float(P_bb[i]), 3),
-                'z_level':  round(float(zl_bb[i]), 2),
+                'value': round(float(bb_arr[i]),1), 'unit':'$B',
+                'yoy': round(p4(bb_arr),1), 'phase': st_bb,
+                'phase_score': round(float(lp_bb[i]),3),
             },
             'mna': {
-                'value':    round(float(mna_arr[i]), 1),
-                'unit':     '$B',
-                'yoy':      round(pct4(mna_arr), 1),
-                'phase':    mna_state,
-                'phase_score': round(float(P_mna[i]), 3),
-                'z_level':  round(float(zl_mna[i]), 2),
+                'value': round(float(mna_arr[i]),1), 'unit':'$B',
+                'yoy': round(p4(mna_arr),1) if has_mna else 0, 'phase': st_mna,
+                'phase_score': round(float(lp_mna[i]),3),
+                'available': has_mna,
             },
             'cash': {
-                'value':    round(float(csh_arr[i]), 2),
-                'unit':     '% of ST Liab',
-                'chg_1y':   round(chg4(csh_arr), 2),
-                'phase':    csh_state,
-                'phase_score': round(float(P_csh[i]), 3),
-                'z_level':  round(float(zl_csh[i]), 2),
+                'value': round(float(csh_arr[i]),2), 'unit':'%',
+                'chg_1y': round(c4(csh_arr),2), 'phase': st_csh,
+                'phase_score': round(float(lp_csh[i]),3),
             },
         }
         records.append(rec)
 
-    # 10. Diagnostics
-    print("=== Historical Phase Trajectory (every 4 quarters) ===")
-    for rec in records[::4]:
-        s = rec['composite_score_weighted']
-        print(f"  {rec['quarter_label']:8s}  {s:.2f}  {rec['composite_phase']}")
-
-    cur = records[-1]
-    print(f"\n=== Current: {cur['quarter_label']} ===")
-    print(f"  Phase: {cur['composite_phase']}  Score: {cur['composite_score_weighted']}")
-    for k in ['defaults','profit_margins','capex','buybacks','mna','cash']:
-        v  = cur[k]['value']
-        ph = cur[k]['phase']
-        ep = cur['indicator_pressures'][k]
-        print(f"  {k:<20s}  {v:>10}  P={ep:+.2f}  -> {ph}")
-
-    scores = [r['composite_score_weighted'] for r in records]
-    print(f"\nScore range: {min(scores):.3f} to {max(scores):.3f}")
-    phases = {}
-    for r in records:
-        p = r['composite_phase']
-        phases[p] = phases.get(p, 0) + 1
-    print("Phase distribution:", phases)
-
-    # 11. Build and write JSON
     MATRIX = [
-        {'id':'defaults','name':'Defaults','description':'Delinquency Rate on C&I Loans (FRED: DRBLACBS)',
+        {'id':'defaults','name':'Defaults','description':'C&I Loan Delinquency Rate (FRED: DRBLACBS • from 1987)',
          'early':'Plateau','mid':'Trend lower','late':'Bottom','recession':'Rise'},
-        {'id':'profit_margins','name':'Profit Margins','description':'Corporate Profits After Tax / GDP (FRED: CP / GDP)',
-         'early':'Recover','mid':'Expand','late':'Plateau','recession':'Decline & bottom'},
-        {'id':'capex','name':'CAPEX','description':'Private Nonresidential Fixed Investment YoY growth (FRED: PNFI)',
-         'early':'Bottoms then rises','mid':'Stabilizes','late':'Accelerates','recession':'Declines'},
+        {'id':'profit_margins','name':'Profit Margins','description':'Corporate Profits / GDP (FRED: CP / GDP)',
+         'early':'Recover','mid':'Expand','late':'Plateau','recession':'Decline'},
+        {'id':'capex','name':'CAPEX','description':'Private Nonresidential Fixed Investment YoY (FRED: PNFI)',
+         'early':'Bottoms','mid':'Stabilizes','late':'Accelerates','recession':'Declines'},
         {'id':'dividends','name':'Dividends','description':'Net Corporate Dividends (FRED: DIVIDEND)',
-         'early':'Payouts and ratios rise','mid':'Payouts rise, ratios stabilize',
-         'late':'Payouts rise, ratios decline','recession':'Payouts decline, ratios rise'},
-        {'id':'buybacks','name':'Buybacks','description':'NFC Corporate Equities Liability Transactions (FRED: NCBCEBQ027S)',
-         'early':'Reinstated','mid':'Rising but less than free cash flows',
-         'late':'Rising, nearing or exceeding free cash flows','recession':'Falling or halted'},
-        {'id':'mna','name':'M&A','description':'US Direct Investment Equity Acquisitions (FRED: IEAADIN)',
-         'early':'Start of cycle','mid':'Growing, major deals emerge',
-         'late':'Peaks, mega-deals, high valuations','recession':'End of cycle, cheap valuations'},
-        {'id':'cash','name':'Cash position','description':'NFC Liquid Assets / ST Liabilities (FRED: BOGZ1FL104001006Q)',
-         'early':'Build-up','mid':'Build-up and redeployment','late':'Decline','recession':'Rebuilding'},
+         'early':'Payouts and ratios rise','mid':'Payouts rise',
+         'late':'Payouts rise, ratios fall','recession':'Payouts decline'},
+        {'id':'buybacks','name':'Buybacks','description':'NFC Equity Retirements (FRED: NCBCEBQ027S)',
+         'early':'Reinstated','mid':'Rising < FCF','late':'Near/above FCF','recession':'Halted'},
+        {'id':'mna','name':'M&A','description':'US Direct Investment Acquisitions (FRED: IEAADIN • from 2000)',
+         'early':'Starting','mid':'Growing','late':'Mega-deals','recession':'Cheap valuations'},
+        {'id':'cash','name':'Cash','description':'NFC Liquid Assets / ST Liabilities (FRED: BOGZ1FL104001006Q)',
+         'early':'Building','mid':'Redeploying','late':'Declining','recession':'Rebuilding'},
     ]
 
     dataset = {
         'metadata': {
-            'generated_at':  datetime.now().isoformat(),
-            'source':        'Federal Reserve FRED + Invesco Credit Cycle Framework',
-            'model_version': '3.0 — Full-sample z-score expansion pressure + zero-phase EWMA smoother',
+            'generated_at':   datetime.now().isoformat(),
+            'model_version':  '4.0 — Phase-Plane + Circular EWMA',
+            'source':         'Federal Reserve FRED • Invesco Framework',
             'quarters_count': N,
-            'start_date':    dates[0],
-            'end_date':      dates[-1],
-            'ewma_alpha':    EWMA_A,
-            'k_scale':       K_SCALE,
+            'start_date':     dates[0],
+            'end_date':       dates[-1],
+            'h_scale':        H_SCALE,
+            'm_scale':        M_SCALE,
+            'ewma_alpha':     EWMA_A,
             'weights_presets': {'intelligent': W_INTEL, 'equal': W_EQUAL},
+            'nber_recessions': NBER_RECESSIONS,
+            'data_notes': {
+                'defaults': f'Available from {def_start}; z=0 before that date',
+                'mna':      f'Available from {mna_start}; z=0 before that date',
+            }
         },
         'invesco_matrix': MATRIX,
         'timeline':       records,
         'current':        records[-1],
     }
+
     out = r"C:\Users\kaloy\.gemini\antigravity\scratch\credit_cycle_app\credit_cycle_data.json"
     with open(out, 'w', encoding='utf-8') as f:
         json.dump(dataset, f, indent=2)
